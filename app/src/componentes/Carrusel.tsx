@@ -148,10 +148,10 @@ export function Carrusel({ nombre }: { nombre: string }) {
               <button className="boton" type="button" onClick={() => setRenombrando(false)}>Cancelar</button>
             </form>
           ) : (
-            <button className="group flex items-center gap-3 text-left" onClick={() => { setNuevoNombre(nombre); setRenombrando(true); }} title="Cambiar el nombre" disabled={fase === "generando"}>
-              <h1 className="truncate text-[28px] font-bold tracking-tight sm:text-[32px]">{nombre}</h1>
-              <Pencil size={18} className="opacity-40 transition-opacity group-hover:opacity-100" />
-            </button>
+            <div className="group flex items-center gap-3">
+              <h1 className="cursor-text truncate text-[28px] font-bold tracking-tight sm:text-[32px]" title="Doble clic para cambiar el nombre" onDoubleClick={() => { if (fase !== "generando") { setNuevoNombre(nombre); setRenombrando(true); } }}>{nombre}</h1>
+              <button className="opacity-40 transition-opacity group-hover:opacity-100 disabled:opacity-20" aria-label="Cambiar el nombre" title="Cambiar el nombre" onClick={() => { setNuevoNombre(nombre); setRenombrando(true); }} disabled={fase === "generando"}><Pencil size={18} /></button>
+            </div>
           )}
           <p className="mt-1 text-[14px]" style={{ color: "var(--fg-muted)" }}>{d.cupo}</p>
         </div>

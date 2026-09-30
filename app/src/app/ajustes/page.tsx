@@ -71,9 +71,14 @@ export default function AjustesPagina() {
             {a.clave_puesta ? <Pastilla tono={a.creditos !== null ? "ok" : "warn"}>{a.creditos !== null ? `${a.creditos} créditos` : a.creditos_error ?? "Clave guardada"}</Pastilla> : <Pastilla tono="danger">Sin clave</Pastilla>}
           </div>
           <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Descarga los slides de los carruseles originales. 1 crédito por carrusel. La clave se guarda solo en tu Mac.</p>
-          <Campo etiqueta={a.clave_puesta ? `Clave guardada (termina en ${a.clave_final})` : "Clave de la API"} ayuda="Pega una clave nueva para sustituirla.">
-            <input className="campo mono" type="password" value={clave} onChange={(e) => setClave(e.target.value)} placeholder={a.clave_puesta ? "••••••••" : "Pega aquí tu clave"} autoComplete="off" />
-          </Campo>
+          <form className="flex flex-wrap items-end gap-3" onSubmit={(e) => { e.preventDefault(); void guardar(); }}>
+            <div className="min-w-[240px] flex-1">
+              <Campo etiqueta={a.clave_puesta ? `Clave guardada (termina en ${a.clave_final})` : "Clave de la API"} ayuda="Pega una clave nueva para sustituirla.">
+                <input className="campo mono" type="password" value={clave} onChange={(e) => setClave(e.target.value)} placeholder={a.clave_puesta ? "••••••••" : "Pega aquí tu clave"} autoComplete="off" />
+              </Campo>
+            </div>
+            <button className="boton boton-primario" type="submit" disabled={guardando || !clave.trim()}>{guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Guardar clave</button>
+          </form>
         </Panel>
 
         <Panel className="aparece">

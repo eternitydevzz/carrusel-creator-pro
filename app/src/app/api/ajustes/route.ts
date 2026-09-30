@@ -14,10 +14,11 @@ function comando(cmd: string, args: string[]): Promise<string> {
 async function creditos(clave: string): Promise<{ creditos: number | null; error?: string }> {
   if (!clave) return { creditos: null };
   try {
-    const r = await fetch("https://api.scrapecreators.com/v1/credit/balance", { headers: { "x-api-key": clave }, signal: AbortSignal.timeout(6000) });
+    // GET /v1/account/credit-balance → { success, credits_remaining, creditCount }. No gasta créditos.
+    const r = await fetch("https://api.scrapecreators.com/v1/account/credit-balance", { headers: { "x-api-key": clave }, signal: AbortSignal.timeout(6000) });
     if (!r.ok) return { creditos: null, error: r.status === 401 || r.status === 403 ? "La clave no es válida" : `ScrapeCreators respondió ${r.status}` };
-    const d = (await r.json()) as { credits?: unknown; balance?: unknown; data?: { credits?: unknown } };
-    const n = Number(d.credits ?? d.balance ?? d.data?.credits);
+    const d = (await r.json()) as { credits_remaining?: unknown; creditCount?: unknown; credits?: unknown };
+    const n = Number(d.credits_remaining ?? d.creditCount ?? d.credits);
     return { creditos: Number.isFinite(n) ? n : null };
   } catch { return { creditos: null, error: "No se pudo consultar ScrapeCreators" }; }
 }

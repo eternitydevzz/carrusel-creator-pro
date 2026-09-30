@@ -60,23 +60,25 @@ for i in 1...nTot {
     sx += segAncho + hueco
 }
 
-// Pie: línea — estrella — línea, y debajo el @ centrado
-let yLinea: CGFloat = 1232
-ctx.setStrokeColor(blanco); ctx.setLineWidth(2); ctx.setLineCap(.round)
-ctx.move(to: CGPoint(x: 400, y: yLinea)); ctx.addLine(to: CGPoint(x: 508, y: yLinea))
-ctx.move(to: CGPoint(x: 572, y: yLinea)); ctx.addLine(to: CGPoint(x: 680, y: yLinea))
-ctx.strokePath()
-// Estrella de 5 puntas
-let cx: CGFloat = 540, cy = yLinea, rE: CGFloat = 13, rI: CGFloat = 5.5
-let star = CGMutablePath()
-for i in 0..<10 {
-    let r = i % 2 == 0 ? rE : rI
-    let a = -CGFloat.pi/2 + CGFloat(i) * CGFloat.pi/5
-    let p = CGPoint(x: cx + r * cos(a), y: cy + r * sin(a))
-    if i == 0 { star.move(to: p) } else { star.addLine(to: p) }
+// Pie: el @ centrado. La línea-estrella de encima es opcional (PIE_LINEA=1): a 1232 px chocaba
+// con el texto secundario cuando Codex lo colocaba pegado al borde, y sin ella el pie sigue leyéndose igual.
+if ProcessInfo.processInfo.environment["PIE_LINEA"] == "1" {
+    let yLinea: CGFloat = 1232
+    ctx.setStrokeColor(blanco); ctx.setLineWidth(2); ctx.setLineCap(.round)
+    ctx.move(to: CGPoint(x: 400, y: yLinea)); ctx.addLine(to: CGPoint(x: 508, y: yLinea))
+    ctx.move(to: CGPoint(x: 572, y: yLinea)); ctx.addLine(to: CGPoint(x: 680, y: yLinea))
+    ctx.strokePath()
+    let cx: CGFloat = 540, cy = yLinea, rE: CGFloat = 13, rI: CGFloat = 5.5
+    let star = CGMutablePath()
+    for i in 0..<10 {
+        let r = i % 2 == 0 ? rE : rI
+        let a = -CGFloat.pi/2 + CGFloat(i) * CGFloat.pi/5
+        let p = CGPoint(x: cx + r * cos(a), y: cy + r * sin(a))
+        if i == 0 { star.move(to: p) } else { star.addLine(to: p) }
+    }
+    star.closeSubpath()
+    ctx.setFillColor(blanco); ctx.addPath(star); ctx.fillPath()
 }
-star.closeSubpath()
-ctx.setFillColor(blanco); ctx.addPath(star); ctx.fillPath()
 texto(handle, "HelveticaNeue-Medium", 30, centroX: 540, baseY: 1284, color: blanco)
 
 // A la derecha, a la altura del @: "desliza →" en todos menos el último; en el último, el icono de guardar

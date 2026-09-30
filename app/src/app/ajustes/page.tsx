@@ -45,7 +45,8 @@ export default function AjustesPagina() {
         <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Aquí se guardan tu kit de marca, las fichas, los originales descargados y los carruseles terminados. Escribe la ruta de la carpeta que quieras usar (por ejemplo, una dentro de Documentos o de tu Drive).</p>
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[280px] flex-1"><Campo etiqueta="Ruta de la carpeta" ayuda={`Por defecto: ${a.datos_por_defecto}`}><input className="campo mono" value={carpeta} onChange={(e) => setCarpeta(e.target.value)} /></Campo></div>
-          <button className="boton" disabled={guardando || carpeta === a.datos} onClick={cambiarCarpeta}><FolderOpen size={16} /> Usar esta carpeta</button>
+          <button className="boton" disabled={guardando || carpeta === a.datos} onClick={cambiarCarpeta}><Check size={16} /> Usar esta carpeta</button>
+          <button className="boton boton-fantasma" title="Abrir la carpeta actual en el Finder" onClick={() => void fetch("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })}><FolderOpen size={16} /> Abrir en el Finder</button>
         </div>
       </Panel>
 

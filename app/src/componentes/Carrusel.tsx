@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, Loader2, Pencil, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, FolderOpen, Loader2, Pencil, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
 import type { Ficha, Slide } from "@/lib/motor";
 
@@ -132,6 +132,9 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const minutos = d.estado?.inicio ? Math.max(0, Math.round((Date.now() - new Date(d.estado.inicio).getTime()) / 60000)) : 0;
   const sello = d.slides.reduce((a, s) => a + s.version, 0);
   const img = (ruta: string) => `/api/archivo?ruta=${encodeURIComponent(ruta)}&t=${sello}`;
+  // "Cuenta 'x': 29 imágenes en las últimas 24 h (tope 60)" → cuántas quedan hoy
+  const cupoM = /(\d+) imágenes .*tope (\d+)/.exec(d.cupo);
+  const quedan = cupoM ? Math.max(0, Number(cupoM[2]) - Number(cupoM[1])) : null;
   const etiquetaFase = fase === "cerrado" ? "Listo para subir" : fase === "generando" ? (corrigiendoAhora ? "Corrigiendo" : "Generando") : fase === "redactando" ? "Redactando la ficha" : fase === "revision" ? "En revisión" : fase === "ficha" ? "Ficha" : "Sin ficha";
 
   return (
@@ -155,6 +158,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/" className="boton boton-fantasma"><ArrowLeft size={16} /> Inicio</Link>
           <Pastilla tono={fase === "cerrado" ? "ok" : fase === "generando" || fase === "redactando" ? "warn" : "accent"}>{etiquetaFase}</Pastilla>
+          {d.slides.length > 0 && <button className="boton boton-fantasma" title="Abrir la carpeta en el Finder" aria-label="Abrir en el Finder" onClick={() => void fetch("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ruta: `salida/${nombre}` }) })}><FolderOpen size={16} /></button>}
           <button className="boton boton-fantasma" onClick={borrar} aria-label="Borrar carrusel" disabled={fase === "generando"}><Trash2 size={16} /></button>
         </div>
       </header>
@@ -233,8 +237,9 @@ export function Carrusel({ nombre }: { nombre: string }) {
           </div>
 
           <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t pt-5" style={{ borderColor: "var(--border)" }}>
-            <div className="max-w-xl text-[13px]">
+            <div className="flex max-w-xl flex-col gap-2 text-[13px]">
               {d.comprobacion ? (d.comprobacion.ok ? <Pastilla tono="ok"><Check size={14} /> {d.comprobacion.texto}</Pastilla> : <Aviso tono="warn"><pre className="whitespace-pre-wrap font-sans">{d.comprobacion.texto}</pre></Aviso>) : <span style={{ color: "var(--fg-muted)" }}>Guarda para comprobar la ficha.</span>}
+              {quedan !== null && ficha.slides.length > quedan && <Aviso tono="warn">A esta cuenta le quedan {quedan} imágenes hoy y el carrusel necesita {ficha.slides.length}. Codex no lo aceptará: cambia de cuenta en Ajustes o espera.</Aviso>}
             </div>
             <button className="boton boton-primario" disabled={ocupado || guardando} onClick={generar}><Wand2 size={16} /> Generar {ficha.slides.length} slides</button>
           </div>

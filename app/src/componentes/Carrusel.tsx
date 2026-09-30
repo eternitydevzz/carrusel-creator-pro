@@ -2,14 +2,15 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { ArrowLeft, Check, Download, Loader2, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, Loader2, Pencil, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
 import type { Ficha, Slide } from "@/lib/motor";
 
 type Datos = {
   nombre: string; fichaTexto: string; ficha: Ficha | null; comprobacion: { ok: boolean; texto: string } | null;
-  estado: { estado: string; orden: string[]; salida: string } | null; estadoFicha: { estado: string; salida: string } | null;
-  slides: { n: number; png: boolean; jpg: boolean; version: number }[]; sinPie: number; cerrado: boolean; original: string[]; cupo: string;
+  estado: { estado: string; orden: string[]; salida: string; inicio: string } | null; estadoFicha: { estado: string; salida: string } | null;
+  slides: { n: number; png: boolean; jpg: boolean; version: number }[]; progreso: number; cerrado: boolean; original: string[]; cupo: string;
 };
 
 const CASILLAS: { k: string; etiqueta: string; ayuda?: string; larga?: boolean }[] = [
@@ -26,6 +27,7 @@ const CASILLAS: { k: string; etiqueta: string; ayuda?: string; larga?: boolean }
 ];
 
 export function Carrusel({ nombre }: { nombre: string }) {
+  const router = useRouter();
   const [d, setD] = useState<Datos | null>(null);
   const [ficha, setFicha] = useState<Ficha | null>(null);
   const [sucia, setSucia] = useState(false);
@@ -35,7 +37,10 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const [cambio, setCambio] = useState("");
   const [grande, setGrande] = useState<number | null>(null);
   const [ocupado, setOcupado] = useState(false);
+  const [renombrando, setRenombrando] = useState(false);
+  const [nuevoNombre, setNuevoNombre] = useState(nombre);
   const cargaInicial = useRef(true);
+  const estabaEnCurso = useRef(false);
 
   const cargar = useCallback(async () => {
     const r = await fetch(`/api/carrusel/${nombre}`, { cache: "no-store" });
@@ -43,15 +48,20 @@ export function Carrusel({ nombre }: { nombre: string }) {
     const datos = (await r.json()) as Datos;
     setD(datos);
     if (cargaInicial.current || !sucia) { setFicha(datos.ficha); if (datos.ficha) cargaInicial.current = false; }
+    const enCurso = datos.estado?.estado === "en_curso" || datos.estadoFicha?.estado === "en_curso";
+    if (estabaEnCurso.current && !enCurso && typeof Notification !== "undefined" && Notification.permission === "granted") {
+      new Notification("Carrusel Creator Pro", { body: `${nombre}: terminado. Ya puedes revisarlo.` });
+    }
+    estabaEnCurso.current = enCurso;
   }, [nombre, sucia]);
 
   useEffect(() => { void cargar(); }, [cargar]);
   const enCurso = d?.estado?.estado === "en_curso" || d?.estadoFicha?.estado === "en_curso";
+  useEffect(() => { if (!enCurso) return; const t = setInterval(() => { void cargar(); }, 4000); return () => clearInterval(t); }, [enCurso, cargar]);
   useEffect(() => {
-    if (!enCurso) return;
-    const t = setInterval(() => { void cargar(); }, 4000);
-    return () => clearInterval(t);
-  }, [enCurso, cargar]);
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") { setGrande(null); setCorrigiendo(null); setRenombrando(false); } };
+    window.addEventListener("keydown", tecla); return () => window.removeEventListener("keydown", tecla);
+  }, []);
 
   const fase = useMemo(() => {
     if (!d) return "cargando";
@@ -68,8 +78,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
     setGuardando(true);
     try {
       const r = await fetch(`/api/carrusel/${nombre}/ficha`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ficha }) });
-      const res = await r.json();
-      setSucia(false);
+      const res = await r.json(); setSucia(false);
       setD((prev) => prev ? { ...prev, comprobacion: { ok: res.ok, texto: res.texto }, ficha: res.ficha } : prev);
       return !!res.ok;
     } finally { setGuardando(false); }
@@ -87,50 +96,71 @@ export function Carrusel({ nombre }: { nombre: string }) {
   }
 
   async function generar() {
+    if (typeof Notification !== "undefined" && Notification.permission === "default") void Notification.requestPermission();
     if (sucia) { const ok = await guardar(); if (!ok) { setMensaje({ tono: "warn", texto: "La ficha tiene fallos. Corrígelos antes de generar." }); return; } }
     else if (d?.comprobacion && !d.comprobacion.ok) { setMensaje({ tono: "warn", texto: "La ficha tiene fallos. Corrígelos antes de generar." }); return; }
     await accion({ accion: "generar" });
   }
 
+  async function renombrar() {
+    const r = await fetch(`/api/carrusel/${nombre}/renombrar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nuevo: nuevoNombre }) });
+    const res = await r.json();
+    if (!r.ok) { setMensaje({ tono: "danger", texto: res.error }); setRenombrando(false); return; }
+    router.replace(`/carrusel/${res.nombre}`);
+  }
+
   async function borrar() {
     if (!confirm(`¿Borrar el carrusel "${nombre}" con su ficha, su original y sus imágenes? No se puede deshacer.`)) return;
-    await fetch(`/api/carrusel/${nombre}`, { method: "DELETE" });
+    const r = await fetch(`/api/carrusel/${nombre}`, { method: "DELETE" });
+    if (!r.ok) { setMensaje({ tono: "danger", texto: (await r.json()).error }); return; }
     window.location.href = "/";
   }
 
-  function cambiarSlide(i: number, k: string, v: string) {
-    setFicha((f) => { if (!f) return f; const slides = f.slides.map((s, j) => (j === i ? { ...s, [k]: v } : s)); return { ...f, slides }; });
-    setSucia(true);
-  }
+  function cambiarSlide(i: number, k: string, v: string) { setFicha((f) => { if (!f) return f; return { ...f, slides: f.slides.map((s, j) => (j === i ? { ...s, [k]: v } : s)) }; }); setSucia(true); }
   function cambiarCab(k: string, v: string) { setFicha((f) => (f ? { ...f, cabecera: { ...f.cabecera, [k]: v } } : f)); setSucia(true); }
   function añadirSlide() { setFicha((f) => (f ? { ...f, slides: [...f.slides, { titular: "", azul: "", idea: "", texto_escena: "ninguno", manos: "" } as Slide] } : f)); setSucia(true); }
   function quitarSlide(i: number) { setFicha((f) => (f ? { ...f, slides: f.slides.filter((_, j) => j !== i) } : f)); setSucia(true); }
+  function moverSlide(i: number, dir: -1 | 1) {
+    setFicha((f) => { if (!f) return f; const j = i + dir; if (j < 0 || j >= f.slides.length) return f; const s = [...f.slides]; [s[i], s[j]] = [s[j], s[i]]; return { ...f, slides: s }; }); setSucia(true);
+  }
 
   if (!d) return <Panel><p style={{ color: "var(--fg-muted)" }}>Cargando…</p></Panel>;
 
   const n = d.ficha ? Number(d.ficha.cabecera.slides) : d.slides.length;
-  const progreso = fase === "generando" ? Math.min(100, Math.round(((d.sinPie || 0) / Math.max(n, 1)) * 100)) : 0;
-  const img = (ruta: string) => `/api/archivo?ruta=${encodeURIComponent(ruta)}&t=${d.slides.reduce((a, s) => a + s.version, 0)}-${d.sinPie}`;
+  const corrigiendoAhora = d.estado?.orden?.[0] === "corregir";
+  const progreso = fase === "generando" ? (corrigiendoAhora ? 50 : Math.min(100, Math.round((d.progreso / Math.max(n, 1)) * 100))) : 0;
+  const minutos = d.estado?.inicio ? Math.max(0, Math.round((Date.now() - new Date(d.estado.inicio).getTime()) / 60000)) : 0;
+  const sello = d.slides.reduce((a, s) => a + s.version, 0);
+  const img = (ruta: string) => `/api/archivo?ruta=${encodeURIComponent(ruta)}&t=${sello}`;
+  const etiquetaFase = fase === "cerrado" ? "Listo para subir" : fase === "generando" ? (corrigiendoAhora ? "Corrigiendo" : "Generando") : fase === "redactando" ? "Redactando la ficha" : fase === "revision" ? "En revisión" : fase === "ficha" ? "Ficha" : "Sin ficha";
 
   return (
     <div className="flex flex-col gap-6">
-      <Cabecera
-        titulo={nombre}
-        texto={d.cupo}
-        derecha={
-          <div className="flex flex-wrap items-center gap-2">
-            <Link href="/" className="boton boton-fantasma"><ArrowLeft size={16} /> Inicio</Link>
-            <Pastilla tono={fase === "cerrado" ? "ok" : fase === "generando" || fase === "redactando" ? "warn" : "accent"}>
-              {fase === "cerrado" ? "Listo para subir" : fase === "generando" ? "Generando" : fase === "redactando" ? "Redactando la ficha" : fase === "revision" ? "En revisión" : fase === "ficha" ? "Ficha" : "Sin ficha"}
-            </Pastilla>
-            <button className="boton boton-fantasma" onClick={borrar} aria-label="Borrar carrusel"><Trash2 size={16} /></button>
-          </div>
-        }
-      />
+      <header className="aparece mb-2 flex flex-wrap items-end justify-between gap-4">
+        <div className="min-w-0">
+          {renombrando ? (
+            <form className="flex flex-wrap items-center gap-2" onSubmit={(e) => { e.preventDefault(); void renombrar(); }}>
+              <input className="campo text-[22px] font-bold" style={{ width: "min(480px, 90vw)" }} value={nuevoNombre} onChange={(e) => setNuevoNombre(e.target.value)} autoFocus aria-label="Nuevo nombre" />
+              <button className="boton boton-primario" type="submit"><Check size={16} /> Guardar</button>
+              <button className="boton" type="button" onClick={() => setRenombrando(false)}>Cancelar</button>
+            </form>
+          ) : (
+            <button className="group flex items-center gap-3 text-left" onClick={() => { setNuevoNombre(nombre); setRenombrando(true); }} title="Cambiar el nombre" disabled={fase === "generando"}>
+              <h1 className="truncate text-[28px] font-bold tracking-tight sm:text-[32px]">{nombre}</h1>
+              <Pencil size={18} className="opacity-40 transition-opacity group-hover:opacity-100" />
+            </button>
+          )}
+          <p className="mt-1 text-[14px]" style={{ color: "var(--fg-muted)" }}>{d.cupo}</p>
+        </div>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link href="/" className="boton boton-fantasma"><ArrowLeft size={16} /> Inicio</Link>
+          <Pastilla tono={fase === "cerrado" ? "ok" : fase === "generando" || fase === "redactando" ? "warn" : "accent"}>{etiquetaFase}</Pastilla>
+          <button className="boton boton-fantasma" onClick={borrar} aria-label="Borrar carrusel" disabled={fase === "generando"}><Trash2 size={16} /></button>
+        </div>
+      </header>
 
       {mensaje && <Aviso tono={mensaje.tono}><pre className="whitespace-pre-wrap font-sans">{mensaje.texto}</pre></Aviso>}
 
-      {/* Original */}
       {d.original.length > 0 && (
         <Panel className="aparece">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[16px] font-semibold">Carrusel original</h2><span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>{d.original.length} slides</span></div>
@@ -143,23 +173,21 @@ export function Carrusel({ nombre }: { nombre: string }) {
         </Panel>
       )}
 
-      {/* Redactando */}
       {fase === "redactando" && (
         <Panel fuerte className="aparece"><div className="flex items-center gap-3"><Loader2 className="animate-spin" size={18} /><div><div className="font-semibold">Claude está leyendo los slides y redactando la ficha</div><div className="text-[13px]" style={{ color: "var(--fg-muted)" }}>Un minuto aproximadamente. No gasta imágenes.</div></div></div></Panel>
       )}
 
-      {fase === "sin_ficha" && (
+      {fase === "sin_ficha" && !ficha && (
         <Panel fuerte className="aparece">
           <h2 className="mb-2 text-[16px] font-semibold">Este carrusel no tiene ficha</h2>
           {d.estadoFicha?.estado === "error" && <div className="mb-3"><Aviso tono="danger"><pre className="whitespace-pre-wrap font-sans">{d.estadoFicha.salida}</pre></Aviso></div>}
           <div className="flex flex-wrap gap-2">
             {d.original.length > 0 && <button className="boton boton-primario" disabled={ocupado} onClick={() => accion({ accion: "ficha_ia" })}><Sparkles size={16} /> Que Claude la redacte</button>}
-            <button className="boton" onClick={() => { setFicha({ cabecera: { carrusel: nombre, slides: String(d.original.length || 4), cta: "", viral: d.original.length ? `${"datos"}/virales/${nombre}` : "ninguno", bandera: "no" }, slides: Array.from({ length: d.original.length || 4 }, () => ({ titular: "", azul: "", idea: "", texto_escena: "ninguno", manos: "" })) }); setSucia(true); }}>Escribirla yo</button>
+            <button className="boton" onClick={() => { setFicha({ cabecera: { carrusel: nombre, slides: String(d.original.length || 4), cta: "", viral: d.original.length ? `virales/${nombre}` : "ninguno", bandera: "no" }, slides: Array.from({ length: d.original.length || 4 }, () => ({ titular: "", azul: "", idea: "", texto_escena: "ninguno", manos: "" })) }); setSucia(true); }}>Escribirla yo</button>
           </div>
         </Panel>
       )}
 
-      {/* Ficha */}
       {(fase === "ficha" || (fase === "sin_ficha" && ficha)) && ficha && (
         <Panel fuerte className="aparece">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
@@ -194,7 +222,11 @@ export function Carrusel({ nombre }: { nombre: string }) {
                     </div>
                   ))}
                 </div>
-                <div className="mt-3 flex justify-end"><button className="boton boton-fantasma boton-peligro" onClick={() => quitarSlide(i)}><X size={14} /> Quitar slide</button></div>
+                <div className="mt-3 flex flex-wrap justify-end gap-1">
+                  <button className="boton boton-fantasma" onClick={() => moverSlide(i, -1)} disabled={i === 0} aria-label="Subir slide"><ArrowUp size={14} /></button>
+                  <button className="boton boton-fantasma" onClick={() => moverSlide(i, 1)} disabled={i === ficha.slides.length - 1} aria-label="Bajar slide"><ArrowDown size={14} /></button>
+                  <button className="boton boton-fantasma boton-peligro" onClick={() => quitarSlide(i)}><X size={14} /> Quitar</button>
+                </div>
               </details>
             ))}
             <button className="boton" onClick={añadirSlide}>+ Añadir slide</button>
@@ -209,24 +241,33 @@ export function Carrusel({ nombre }: { nombre: string }) {
         </Panel>
       )}
 
-      {/* Generando */}
       {fase === "generando" && (
         <Panel fuerte className="aparece">
-          <div className="mb-3 flex items-center justify-between"><div className="flex items-center gap-3"><Loader2 className="animate-spin" size={18} /><div><div className="font-semibold">{d.estado?.orden?.[0] === "corregir" ? `Corrigiendo el slide ${d.estado.orden[2]}` : "Codex está generando los slides"}</div><div className="text-[13px]" style={{ color: "var(--fg-muted)" }}>De 5 a 12 minutos. Puedes cerrar esta pestaña: sigue solo.</div></div></div><span className="mono">{d.sinPie}/{n}</span></div>
-          <div className="progreso" aria-label="Progreso"><div style={{ width: `${d.estado?.orden?.[0] === "corregir" ? 50 : progreso}%` }} /></div>
+          <div className="mb-3 flex items-center justify-between">
+            <div className="flex items-center gap-3"><Loader2 className="animate-spin" size={18} /><div><div className="font-semibold">{corrigiendoAhora ? `Corrigiendo el slide ${d.estado?.orden[2]}` : "Codex está generando los slides"}</div><div className="text-[13px]" style={{ color: "var(--fg-muted)" }}>{corrigiendoAhora ? "Uno o dos minutos." : "De 5 a 12 minutos."} Puedes cerrar esta pestaña: sigue solo. Llevas {minutos} min.</div></div></div>
+            <span className="mono">{corrigiendoAhora ? "" : `${d.progreso}/${n}`}</span>
+          </div>
+          <div className="progreso" aria-label="Progreso"><div style={{ width: `${Math.max(progreso, 4)}%` }} /></div>
+          {d.slides.some((s) => s.png) && (
+            <div className="mt-4 grid gap-3 sm:grid-cols-4 lg:grid-cols-7">
+              {d.slides.map((s) => (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img key={s.n} src={img(`salida/${nombre}/${s.n}.png`)} alt={`Slide ${s.n}`} className="w-full rounded-xl opacity-70" style={{ aspectRatio: "4/5", objectFit: "cover" }} />
+              ))}
+            </div>
+          )}
         </Panel>
       )}
 
-      {/* Revisión y cerrado */}
       {(fase === "revision" || fase === "cerrado") && (
         <Panel fuerte className="aparece">
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-            <div><h2 className="text-[18px] font-semibold">{fase === "cerrado" ? "Listo para subir" : "Revisión"}</h2><p className="text-[13px]" style={{ color: "var(--fg-muted)" }}>{fase === "cerrado" ? "JPG a 1080×1350, sin metadatos de AI." : "Mira cada slide en grande. Corrige solo lo que falle. Cuando esté, aprueba y cierra."}</p></div>
+            <div><h2 className="text-[18px] font-semibold">{fase === "cerrado" ? "Listo para subir" : "Revisión"}</h2><p className="text-[13px]" style={{ color: "var(--fg-muted)" }}>{fase === "cerrado" ? "JPG a 1080×1350, sin metadatos de AI. Para cambiar algo habría que generarlo de nuevo." : "Mira cada slide en grande. Corrige solo lo que falle. Cuando esté, aprueba y cierra."}</p></div>
             <div className="flex flex-wrap gap-2">
               {fase === "cerrado" ? <a className="boton boton-primario" href={`/api/carrusel/${nombre}/zip`}><Download size={16} /> Descargar ZIP</a> : (
                 <>
                   <button className="boton" disabled={ocupado} onClick={() => accion({ accion: "revisar" })}><RefreshCw size={16} /> Rehacer hoja</button>
-                  <button className="boton boton-primario" disabled={ocupado} onClick={() => { if (confirm("¿Aprobar el carrusel y cerrarlo? Se exportan los JPG limpios y se borran los archivos de trabajo.")) void accion({ accion: "cerrar" }); }}><Check size={16} /> Aprobar y cerrar</button>
+                  <button className="boton boton-primario" disabled={ocupado} onClick={() => { if (confirm("¿Aprobar el carrusel y cerrarlo? Se exportan los JPG limpios y se borran los archivos de trabajo. Después ya no se puede corregir.")) void accion({ accion: "cerrar" }); }}><Check size={16} /> Aprobar y cerrar</button>
                 </>
               )}
             </div>
@@ -252,7 +293,6 @@ export function Carrusel({ nombre }: { nombre: string }) {
         </Panel>
       )}
 
-      {/* Corregir */}
       {corrigiendo !== null && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setCorrigiendo(null)}>
           <div className="vidrio vidrio-fuerte w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="titulo-corregir">
@@ -267,7 +307,6 @@ export function Carrusel({ nombre }: { nombre: string }) {
         </div>
       )}
 
-      {/* Slide en grande */}
       {grande !== null && (
         <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setGrande(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}

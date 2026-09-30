@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { DATOS, escribirMarca, leerMarca } from "@/lib/motor";
+import { datos, escribirMarca, leerMarca } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export async function GET() {
   const marca = await leerMarca();
   const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter(Boolean);
   let referencias: string[] = [];
-  try { referencias = (await fs.readdir(path.join(DATOS, "marca", "referencias"))).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).map((f) => `referencias/${f}`); } catch { /* sin referencias */ }
+  try { referencias = (await fs.readdir(path.join(datos(), "marca", "referencias"))).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).map((f) => `referencias/${f}`); } catch { /* sin referencias */ }
   return NextResponse.json({ marca, fotos, tipografia: marca.tipografia ?? "", referencias });
 }
 
@@ -24,6 +24,6 @@ export async function POST(req: Request) {
   if (marca.handle && !marca.handle.startsWith("@")) marca.handle = "@" + marca.handle;
   await escribirMarca(marca);
   // las capas del pie llevan el handle: si cambia, se vuelven a dibujar solas al generar
-  await fs.rm(path.join(DATOS, "capas"), { recursive: true, force: true });
+  await fs.rm(path.join(datos(), "capas"), { recursive: true, force: true });
   return NextResponse.json({ ok: true, marca });
 }

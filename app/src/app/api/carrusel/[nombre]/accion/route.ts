@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
-import { DATOS, leerEstado, motor, motorFondo, nombreSeguro } from "@/lib/motor";
+import { datos, motor, motorFondo, nombreSeguro, ordenEnCurso } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -11,15 +11,18 @@ export async function POST(req: Request, { params }: { params: Promise<{ nombre:
   const { nombre } = await params;
   if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
   const a = (await req.json()) as Accion;
-  const estadoSalida = path.join(DATOS, "salida", nombre, "_estado.json");
+  const D = datos();
+  const estadoSalida = path.join(D, "salida", nombre, "_estado.json");
 
   if (a.accion === "ficha_ia") {
-    await motorFondo(["ficha_ia", nombre], path.join(DATOS, "virales", nombre, "_estado_ficha.json"));
+    await motorFondo(["ficha_ia", nombre], path.join(D, "virales", nombre, "_estado_ficha.json"));
     return NextResponse.json({ ok: true, lanzado: "ficha_ia" });
   }
-  const enCurso = (await leerEstado(estadoSalida))?.estado === "en_curso";
-  if (enCurso && a.accion !== "revisar") return NextResponse.json({ error: "Ya hay una orden en curso para este carrusel" }, { status: 409 });
-
+  if (a.accion === "generar" || a.accion === "corregir") {
+    // Codex comparte el cupo entre carruseles: una sola generación a la vez en todo el sistema
+    const ocupado = await ordenEnCurso();
+    if (ocupado) return NextResponse.json({ error: ocupado === nombre ? "Ya hay una orden en curso para este carrusel" : `Ya hay una generación en curso en "${ocupado}". Espera a que termine: Codex solo hace una a la vez.` }, { status: 409 });
+  }
   if (a.accion === "generar") {
     await motorFondo(["generar", nombre], estadoSalida);
     return NextResponse.json({ ok: true, lanzado: "generar" });

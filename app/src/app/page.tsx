@@ -17,8 +17,19 @@ export default function Inicio() {
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
   const [lista, setLista] = useState<Resumen[]>([]);
+  const [faltan, setFaltan] = useState<string[]>([]);
 
-  useEffect(() => { fetch("/api/carruseles").then((r) => r.json()).then(setLista).catch(() => {}); }, []);
+  useEffect(() => {
+    fetch("/api/carruseles").then((r) => r.json()).then(setLista).catch(() => {});
+    Promise.all([fetch("/api/marca").then((r) => r.json()), fetch("/api/ajustes").then((r) => r.json())]).then(([m, a]) => {
+      const f: string[] = [];
+      if (!m.fotos?.length) f.push("las fotos del personaje");
+      if (!m.marca?.handle || m.marca.handle === "@tucuenta") f.push("tu @");
+      if (!a.clave_puesta) f.push("la clave de ScrapeCreators");
+      if (!a.codex_ok) f.push("la sesión de Codex");
+      setFaltan(f);
+    }).catch(() => {});
+  }, []);
 
   async function crear(e: React.FormEvent) {
     e.preventDefault(); setError(""); setOcupado(true);
@@ -35,6 +46,9 @@ export default function Inicio() {
   return (
     <div className="flex flex-col gap-6">
       <Cabecera titulo="Crear carrusel" texto="Pega el link de un carrusel de Instagram o tu propio guion. La ficha la revisas tú antes de gastar una sola imagen." />
+      {faltan.length > 0 && (
+        <Aviso tono="warn">Antes del primer carrusel faltan {faltan.join(", ")}. Está en <Link href="/branding" className="underline">Branding</Link> y <Link href="/ajustes" className="underline">Ajustes</Link>.</Aviso>
+      )}
 
       <Panel fuerte className="aparece">
         <div className="mb-5 flex gap-2" role="tablist" aria-label="Forma de empezar">

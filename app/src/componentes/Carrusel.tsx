@@ -299,8 +299,8 @@ export function Carrusel({ nombre }: { nombre: string }) {
       )}
 
       {corrigiendo !== null && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.6)" }} onClick={() => setCorrigiendo(null)}>
-          <div className="vidrio vidrio-fuerte w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="titulo-corregir">
+        <div className="telon fixed inset-0 z-50 grid place-items-center p-4" onClick={() => setCorrigiendo(null)}>
+          <div className="modal aparece w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="titulo-corregir">
             <h3 id="titulo-corregir" className="mb-1 text-[18px] font-semibold">Corregir el slide {corrigiendo}</h3>
             <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Describe el único cambio. Todo lo demás se mantiene, y la cara se restaura con tus fotos. Gasta 1 imagen.</p>
             <textarea className="campo" rows={4} autoFocus value={cambio} onChange={(e) => setCambio(e.target.value)} placeholder="sube el texto para dejar libre la franja del pie" />
@@ -313,7 +313,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
       )}
 
       {grande !== null && (
-        <div className="fixed inset-0 z-50 grid place-items-center p-4" style={{ background: "rgba(0,0,0,0.75)" }} onClick={() => setGrande(null)}>
+        <div className="telon fixed inset-0 z-50 grid place-items-center p-4" onClick={() => setGrande(null)}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={img(`salida/${nombre}/${grande}.${d.cerrado ? "jpg" : "png"}`)} alt={`Slide ${grande}`} className="max-h-[92dvh] rounded-2xl" style={{ boxShadow: "0 40px 100px -30px rgba(0,0,0,0.9)" }} />
         </div>

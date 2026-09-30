@@ -71,6 +71,14 @@ body {
 }
 .vidrio-fuerte { background: var(--surface-strong); border-color: var(--border-strong); }
 .vidrio-suave  { background: rgba(255, 255, 255, 0.035); }
+/* Diálogos: casi opacos. Un cristal al 9 % sobre una rejilla de imágenes deja ver todo lo de detrás. */
+.modal {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.08) inset, 0 40px 100px -30px rgba(0, 0, 0, 0.95);
+}
+.telon { background: rgba(4, 6, 13, 0.7); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); }
 
 /* Controles */
 .boton {

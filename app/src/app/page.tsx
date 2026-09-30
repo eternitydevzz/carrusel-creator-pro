@@ -46,12 +46,12 @@ export default function Inicio() {
           <div className="grid gap-4">
             {modo === "link" ? (
               <>
-                <Campo etiqueta="Link del carrusel original" ayuda="Se descargan sus slides con ScrapeCreators (1 crédito) y Codex redacta la ficha en español con tu ángulo.">
+                <Campo etiqueta="Link del carrusel original" ayuda="Se descargan sus slides con ScrapeCreators (1 crédito) y Claude redacta la ficha en español con tu ángulo.">
                   <input className="campo" placeholder="https://www.instagram.com/p/…" value={url} onChange={(e) => setUrl(e.target.value)} required inputMode="url" />
                 </Campo>
                 <label className="flex items-center gap-3 text-[14px]">
                   <input type="checkbox" checked={redactar} onChange={(e) => setRedactar(e.target.checked)} className="h-4 w-4 accent-[#1a79fb]" />
-                  Que la AI redacte la ficha (si lo desmarcas, la escribes tú)
+                  Que Claude redacte la ficha (si lo desmarcas, la escribes tú)
                 </label>
               </>
             ) : (

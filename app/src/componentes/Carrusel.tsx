@@ -145,7 +145,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
 
       {/* Redactando */}
       {fase === "redactando" && (
-        <Panel fuerte className="aparece"><div className="flex items-center gap-3"><Loader2 className="animate-spin" size={18} /><div><div className="font-semibold">Codex está leyendo los slides y redactando la ficha</div><div className="text-[13px]" style={{ color: "var(--fg-muted)" }}>Un minuto aproximadamente. No gasta imágenes.</div></div></div></Panel>
+        <Panel fuerte className="aparece"><div className="flex items-center gap-3"><Loader2 className="animate-spin" size={18} /><div><div className="font-semibold">Claude está leyendo los slides y redactando la ficha</div><div className="text-[13px]" style={{ color: "var(--fg-muted)" }}>Un minuto aproximadamente. No gasta imágenes.</div></div></div></Panel>
       )}
 
       {fase === "sin_ficha" && (
@@ -153,7 +153,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
           <h2 className="mb-2 text-[16px] font-semibold">Este carrusel no tiene ficha</h2>
           {d.estadoFicha?.estado === "error" && <div className="mb-3"><Aviso tono="danger"><pre className="whitespace-pre-wrap font-sans">{d.estadoFicha.salida}</pre></Aviso></div>}
           <div className="flex flex-wrap gap-2">
-            {d.original.length > 0 && <button className="boton boton-primario" disabled={ocupado} onClick={() => accion({ accion: "ficha_ia" })}><Sparkles size={16} /> Que la AI la redacte</button>}
+            {d.original.length > 0 && <button className="boton boton-primario" disabled={ocupado} onClick={() => accion({ accion: "ficha_ia" })}><Sparkles size={16} /> Que Claude la redacte</button>}
             <button className="boton" onClick={() => { setFicha({ cabecera: { carrusel: nombre, slides: String(d.original.length || 4), cta: "", viral: d.original.length ? `${"datos"}/virales/${nombre}` : "ninguno", bandera: "no" }, slides: Array.from({ length: d.original.length || 4 }, () => ({ titular: "", azul: "", idea: "", texto_escena: "ninguno", manos: "" })) }); setSucia(true); }}>Escribirla yo</button>
           </div>
         </Panel>
@@ -165,7 +165,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <div><h2 className="text-[18px] font-semibold">Ficha</h2><p className="text-[13px]" style={{ color: "var(--fg-muted)" }}>Lo único que se escribe por carrusel. Revísala y aprueba generando.</p></div>
             <div className="flex gap-2">
-              {d.original.length > 0 && <button className="boton" disabled={ocupado} onClick={() => accion({ accion: "ficha_ia" })} title="Vuelve a redactar toda la ficha con la AI"><Sparkles size={16} /> Redactar de nuevo</button>}
+              {d.original.length > 0 && <button className="boton" disabled={ocupado} onClick={() => accion({ accion: "ficha_ia" })} title="Vuelve a redactar toda la ficha con Claude"><Sparkles size={16} /> Redactar de nuevo</button>}
               <button className="boton" disabled={!sucia || guardando} onClick={() => void guardar()}>{guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Guardar y comprobar</button>
             </div>
           </div>

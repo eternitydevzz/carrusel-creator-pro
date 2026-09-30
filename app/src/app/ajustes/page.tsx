@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { Check, Loader2 } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
 
-type Ajustes = { clave_puesta: boolean; clave_final: string; cuenta: string; ubicacion: Record<string, string | number>; codex: string; codex_ok: boolean; cupo: string; herramientas: Record<string, boolean>; datos: string };
+type Ajustes = { clave_puesta: boolean; clave_final: string; cuenta: string; ubicacion: Record<string, string | number>; codex: string; codex_ok: boolean; claude: string; claude_ok: boolean; cupo: string; herramientas: Record<string, boolean>; datos: string };
 
 export default function AjustesPagina() {
   const [a, setA] = useState<Ajustes | null>(null);
@@ -36,6 +36,12 @@ export default function AjustesPagina() {
           <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Codex usa tu plan de ChatGPT. Para conectarlo o cambiar de cuenta, en la Terminal: <code className="mono">codex logout</code> y <code className="mono">codex login</code>. Después escribe aquí el nombre de la cuenta para que el cupo se cuente bien.</p>
           <Campo etiqueta="Nombre de la cuenta conectada" ayuda="Solo una etiqueta para el registro de imágenes (cuenta1, cuenta2…)."><input className="campo" value={cuenta} onChange={(e) => setCuenta(e.target.value)} /></Campo>
           <div className="mt-4"><Pastilla tono="accent">{a.cupo}</Pastilla></div>
+        </Panel>
+
+        <Panel className="aparece">
+          <h2 className="mb-3 text-[18px] font-semibold">Claude Code</h2>
+          <div className="mb-3 flex items-center gap-2"><Pastilla tono={a.claude_ok ? "ok" : "danger"}>{a.claude_ok ? "Instalado" : "No encontrado"}</Pastilla><span className="mono" style={{ color: "var(--fg-muted)" }}>{a.claude}</span></div>
+          <p className="text-[13px]" style={{ color: "var(--fg-muted)" }}>Claude redacta las fichas leyendo los slides del original, con tu propia sesión de Claude Code (no con la API). Si no está: <code className="mono">npm install -g @anthropic-ai/claude-code</code> y luego <code className="mono">claude</code> para entrar.</p>
         </Panel>
 
         <Panel className="aparece" >

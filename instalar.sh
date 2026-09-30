@@ -13,6 +13,7 @@ for f in node ffmpeg exiftool; do
 done
 if command -v swift >/dev/null; then echo "  ✓ swift"; else echo "  → instalando las herramientas de Xcode (Swift)"; xcode-select --install || true; echo "    Cuando termine la instalación de Xcode, vuelve a ejecutar este script."; exit 1; fi
 if command -v codex >/dev/null; then echo "  ✓ codex"; else echo "  → instalando Codex CLI"; npm install -g @openai/codex; fi
+if command -v claude >/dev/null || [ -x "$HOME/.local/bin/claude" ]; then echo "  ✓ claude"; else echo "  → instalando Claude Code"; npm install -g @anthropic-ai/claude-code; fi
 
 echo "  → dependencias de la app"
 (cd "$AQUI/app" && npm install --silent)
@@ -35,4 +36,4 @@ echo
 if codex login status 2>&1 | grep -qi "logged in"; then echo "  ✓ Codex conectado"; else echo "  ! Codex sin sesión: ejecuta  codex login  (se abre el navegador)"; fi
 echo
 echo "Listo. Arranca con:  ./arrancar.sh   y abre http://localhost:3000"
-echo "Primera vez: Ajustes (clave de ScrapeCreators) y Branding (tus fotos y tu marca)."
+echo "Primera vez: entra en Claude Code con  claude  , y en la app: Ajustes (clave de ScrapeCreators) y Branding (tus fotos y tu marca)."

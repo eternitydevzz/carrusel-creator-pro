@@ -38,7 +38,7 @@ La interfaz no genera nada por sí misma: llama al motor, que ya ha producido do
 | Pantalla | Qué hace |
 |---|---|
 | Inicio | Pegar links o un guion. Botón "Crear carrusel". Tarjetas con los carruseles recientes |
-| Ficha | La ficha por slide, editable en pantalla. Comprobación automática visible. Botón "Generar" |
+| Ficha | Claude Code la redacta leyendo los slides del original; editable en pantalla. Comprobación automática visible. Botón "Generar" |
 | Generando | Progreso real (slides que van saliendo), tiempo y cupo. No bloquea la app |
 | Revisión | Los slides en grande, lista de control, botón "Corregir" por slide con el cambio escrito, "Aprobar y cerrar" |
 | Biblioteca | Carruseles cerrados con descarga en ZIP |

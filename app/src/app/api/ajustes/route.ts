@@ -13,14 +13,14 @@ function comando(cmd: string, args: string[]): Promise<string> {
 export async function GET() {
   const ajustes = await leerAjustes();
   const clave = String(ajustes.scrapecreators_key ?? "");
-  const [codex, cupo] = await Promise.all([comando("codex", ["login", "status"]), motor(["cupo"], { timeoutMs: 15_000 })]);
+  const [codex, cupo, claude] = await Promise.all([comando("codex", ["login", "status"]), motor(["cupo"], { timeoutMs: 15_000 }), comando("claude", ["--version"])]);
   const herramientas: Record<string, boolean> = {};
-  for (const h of ["codex", "ffmpeg", "exiftool", "swift", "python3", "zip"]) { const w = await comando("which", [h]); herramientas[h] = w.startsWith("/"); }
+  for (const h of ["codex", "claude", "ffmpeg", "exiftool", "swift", "python3", "zip"]) { const w = await comando("which", [h]); herramientas[h] = w.startsWith("/"); }
   return NextResponse.json({
     clave_puesta: clave.length > 0, clave_final: clave.slice(-4),
     cuenta: (await leerTexto(path.join(DATOS, "CUENTA_ACTUAL.txt"))).trim(),
     ubicacion: ajustes.ubicacion ?? { ciudad: "Newark", estado: "New Jersey", pais: "United States", codigo: "US", lat: 40.7357, lon: -74.1724 },
-    codex, codex_ok: /logged in/i.test(codex), cupo: cupo.salida, herramientas, datos: DATOS,
+    codex, codex_ok: /logged in/i.test(codex), claude, claude_ok: /^\d+\.\d+/.test(claude), cupo: cupo.salida, herramientas, datos: DATOS,
   });
 }
 

@@ -3,7 +3,7 @@
 #
 #   carrusel.sh bajar <url_instagram> <nombre>      descarga los slides del carrusel original a virales/<nombre>/
 #   carrusel.sh nueva <nombre> <N>                  crea la ficha vacía en fichas/<nombre>.md
-#   carrusel.sh ficha_ia <nombre>                   Codex redacta la ficha mirando los slides del original (tokens, no imágenes)
+#   carrusel.sh ficha_ia <nombre>                   Claude Code redacta la ficha mirando los slides del original (tokens, no imágenes)
 #   carrusel.sh comprobar <nombre>                  comprueba la ficha (sin gastar nada)
 #   carrusel.sh generar <nombre>                    comprueba, monta el prompt, genera con Codex, recorta, estampa y hace la hoja
 #   carrusel.sh corregir <nombre> <n> "<cambio>"    corrige un slide editándolo y lo vuelve a estampar (1 imagen)
@@ -14,6 +14,7 @@
 # Variables opcionales:  ENSAYO=1 (no llama a Codex)   FORZAR=1 (salta el cupo)   RECOGER_SID=<id> (recoge una sesión ya hecha)
 set -u
 AQUI="${0:A:h}"
+export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 DATOS="${DATOS:-${AQUI:h}/datos}"; export DATOS
 MARCA="$DATOS/marca"; FICHAS="$DATOS/fichas"; VIRALES="$DATOS/virales"; SALIDA="$DATOS/salida"
 GEN="${GEN:-$HOME/.codex/generated_images}"
@@ -114,35 +115,34 @@ EOF
 
 cmd_nueva() { python3 "$AQUI/ficha.py" nueva "$1" "$2" "$VIRALES/$1"; }
 
-cmd_ficha_ia() {  # <nombre>: Codex redacta la ficha a partir de los slides del original (gasta tokens, no imágenes)
+cmd_ficha_ia() {  # <nombre>: Claude Code (con la sesión del usuario) redacta la ficha mirando los slides del original. Tokens, no imágenes.
   local nombre="$1" V="$VIRALES/$1" F="$FICHAS/$1.md"
   [ -d "$V" ] || { echo "No existe el original en $V. Primero: carrusel.sh bajar <url> $nombre"; exit 1; }
   local N=$(ls "$V" | grep -c -E '^slide_[0-9]+\.jpg$'); [ "$N" -gt 0 ] || { echo "No hay slides en $V"; exit 1; }
+  local CLAUDE="$(command -v claude || true)"; [ -z "$CLAUDE" ] && [ -x "$HOME/.local/bin/claude" ] && CLAUDE="$HOME/.local/bin/claude"
+  [ -n "$CLAUDE" ] || { echo "Falta Claude Code. Instálalo (npm install -g @anthropic-ai/claude-code) y entra con: claude"; exit 1; }
   local IDIOMA="$(dato idioma)"; local ANGULO="$(dato angulo)"
   local P="$V/_prompt_ficha.txt"
   sed -e "s|{HANDLE}|$PIE_HANDLE|g" -e "s|{ANGULO}|$ANGULO|g" -e "s|{IDIOMA}|${IDIOMA:-español}|g" -e "s|{NOMBRE}|$nombre|g" -e "s|{N}|$N|g" -e "s|{VIRAL}|$V|g" "$AQUI/PROMPT_FICHA.txt" > "$P"
-  { cat "$P"; echo; echo "Los slides adjuntos van en orden, del 1 al $N. Antes de escribir la ficha, lee con cuidado todo el texto de cada slide: nombres, cifras y pasos tienen que ser exactos."; } > "$V/_prompt_ficha_enviado.txt"
-  local REFS=(); for f in "$V"/slide_*.jpg; do REFS+=("$f"); done
+  { cat "$P"; echo; echo "Los slides del carrusel original están en estos archivos, en orden. Ábrelos con la herramienta Read y lee con cuidado todo su texto (nombres, cifras y pasos tienen que ser exactos) antes de escribir la ficha:"; for f in "$V"/slide_*.jpg; do echo "${f:A}"; done; echo; echo "Responde SOLO con la ficha, sin explicaciones ni marcas de código."; } > "$V/_prompt_ficha_enviado.txt"
   mkdir -p "$V/_logs"; local LOG=$(siguiente_log "$V" ficha)
-  llamar_codex "$V" "$V/_prompt_ficha_enviado.txt" "$LOG" "${REFS[@]}"; local RC=$?
-  [ "${ENSAYO:-0}" = "1" ] && exit 0
-  # la ficha es lo que Codex responde entre la línea "carrusel:" y "tokens used"
+  if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Claude. Prompt: $V/_prompt_ficha_enviado.txt"; exit 0; fi
+  "$CLAUDE" -p --allowedTools "Read" --output-format text < "$V/_prompt_ficha_enviado.txt" > "$LOG" 2>"$LOG.err"; local RC=$?
+  [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
   python3 - "$LOG" "$F" <<'PY'
 import sys,re
-log=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
-m=re.search(r"^codex\n(carrusel:.*?)(?=\ntokens used)", log, re.S|re.M)
-if not m:
-    m=re.search(r"(carrusel:.*?)(?=\ntokens used)", log, re.S)
-if not m: raise SystemExit("Codex no devolvió una ficha. Ver "+sys.argv[1])
-t=m.group(1).strip()
-t=re.sub(r"^```\w*\n|\n```$","",t)
+t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
+t=re.sub(r"```\w*","",t)
+i=t.find("carrusel:")
+if i<0: raise SystemExit("Claude no devolvió una ficha. Ver "+sys.argv[1])
+t=t[i:].strip()
 open(sys.argv[2],"w",encoding="utf-8").write(t+"\n")
 print("Ficha escrita en",sys.argv[2],"·",t.count("\n## "),"slides")
 PY
   [ $? -eq 0 ] || exit 1
-  local TOK=$(grep -A1 'tokens used' "$LOG" | tail -1); anotar_cupo "$nombre" ficha_ia 0 "$TOK"
+  anotar_cupo "$nombre" ficha_ia 0 "claude"
   python3 "$AQUI/ficha.py" comprobar "$F" || echo "La ficha tiene avisos: revísala antes de generar."
-  echo "OK ficha_ia $nombre · tokens: $TOK"
+  echo "OK ficha_ia $nombre (Claude Code)"
 }
 
 cmd_comprobar() { python3 "$AQUI/ficha.py" comprobar "$(ficha_de "$1")"; }

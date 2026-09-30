@@ -3,6 +3,7 @@
 #
 #   carrusel.sh bajar <url_instagram> <nombre>      descarga los slides del carrusel original a virales/<nombre>/
 #   carrusel.sh nueva <nombre> <N>                  crea la ficha vacía en fichas/<nombre>.md
+#   carrusel.sh ficha_ia <nombre>                   Codex redacta la ficha mirando los slides del original (tokens, no imágenes)
 #   carrusel.sh comprobar <nombre>                  comprueba la ficha (sin gastar nada)
 #   carrusel.sh generar <nombre>                    comprueba, monta el prompt, genera con Codex, recorta, estampa y hace la hoja
 #   carrusel.sh corregir <nombre> <n> "<cambio>"    corrige un slide editándolo y lo vuelve a estampar (1 imagen)
@@ -113,6 +114,37 @@ EOF
 
 cmd_nueva() { python3 "$AQUI/ficha.py" nueva "$1" "$2" "$VIRALES/$1"; }
 
+cmd_ficha_ia() {  # <nombre>: Codex redacta la ficha a partir de los slides del original (gasta tokens, no imágenes)
+  local nombre="$1" V="$VIRALES/$1" F="$FICHAS/$1.md"
+  [ -d "$V" ] || { echo "No existe el original en $V. Primero: carrusel.sh bajar <url> $nombre"; exit 1; }
+  local N=$(ls "$V" | grep -c -E '^slide_[0-9]+\.jpg$'); [ "$N" -gt 0 ] || { echo "No hay slides en $V"; exit 1; }
+  local IDIOMA="$(dato idioma)"; local ANGULO="$(dato angulo)"
+  local P="$V/_prompt_ficha.txt"
+  sed -e "s|{HANDLE}|$PIE_HANDLE|g" -e "s|{ANGULO}|$ANGULO|g" -e "s|{IDIOMA}|${IDIOMA:-español}|g" -e "s|{NOMBRE}|$nombre|g" -e "s|{N}|$N|g" -e "s|{VIRAL}|$V|g" "$AQUI/PROMPT_FICHA.txt" > "$P"
+  { cat "$P"; echo; echo "Los slides adjuntos van en orden, del 1 al $N. Antes de escribir la ficha, lee con cuidado todo el texto de cada slide: nombres, cifras y pasos tienen que ser exactos."; } > "$V/_prompt_ficha_enviado.txt"
+  local REFS=(); for f in "$V"/slide_*.jpg; do REFS+=("$f"); done
+  mkdir -p "$V/_logs"; local LOG=$(siguiente_log "$V" ficha)
+  llamar_codex "$V" "$V/_prompt_ficha_enviado.txt" "$LOG" "${REFS[@]}"; local RC=$?
+  [ "${ENSAYO:-0}" = "1" ] && exit 0
+  # la ficha es lo que Codex responde entre la línea "carrusel:" y "tokens used"
+  python3 - "$LOG" "$F" <<'PY'
+import sys,re
+log=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
+m=re.search(r"^codex\n(carrusel:.*?)(?=\ntokens used)", log, re.S|re.M)
+if not m:
+    m=re.search(r"(carrusel:.*?)(?=\ntokens used)", log, re.S)
+if not m: raise SystemExit("Codex no devolvió una ficha. Ver "+sys.argv[1])
+t=m.group(1).strip()
+t=re.sub(r"^```\w*\n|\n```$","",t)
+open(sys.argv[2],"w",encoding="utf-8").write(t+"\n")
+print("Ficha escrita en",sys.argv[2],"·",t.count("\n## "),"slides")
+PY
+  [ $? -eq 0 ] || exit 1
+  local TOK=$(grep -A1 'tokens used' "$LOG" | tail -1); anotar_cupo "$nombre" ficha_ia 0 "$TOK"
+  python3 "$AQUI/ficha.py" comprobar "$F" || echo "La ficha tiene avisos: revísala antes de generar."
+  echo "OK ficha_ia $nombre · tokens: $TOK"
+}
+
 cmd_comprobar() { python3 "$AQUI/ficha.py" comprobar "$(ficha_de "$1")"; }
 
 cmd_hojas() {  # <carpeta_viral> <destino>: hojas de 6 slides del original
@@ -128,10 +160,11 @@ cmd_generar() {  # <nombre>
   python3 "$AQUI/ficha.py" comprobar "$F" || exit 1
   local N=$(cab "$nombre" slides) V=$(cab "$nombre" viral) OUT="$SALIDA/$nombre"
   mkdir -p "$OUT/_logs" "$OUT/_sin_pie" "$OUT/_viral"
-  local H=$(cmd_hojas "$V" "$OUT/_viral") || { echo "FALLO al hacer las hojas del viral"; exit 1; }
+  local H=0
+  if [ -d "$V" ]; then H=$(cmd_hojas "$V" "$OUT/_viral") || { echo "FALLO al hacer las hojas del viral"; exit 1; }; fi
   python3 "$AQUI/ficha.py" prompt "$F" "$OUT/_prompt.txt" "$H" || exit 1
   { cat "$OUT/_prompt.txt"; echo; echo "INSTRUCCIÓN TÉCNICA: crea el carrusel completo, los $N slides en orden, en esta misma respuesta. No ejecutes comandos ni añadas texto con código. Al terminar responde solo 'ok'."; } > "$OUT/_prompt_enviado.txt"
-  local REFS=("${(@f)$(refs_marca)}"); for h in $(seq 1 $H); do REFS+=("$OUT/_viral/viral_hoja_$h.jpg"); done
+  local REFS=("${(@f)$(refs_marca)}"); [ "$H" -gt 0 ] && for h in $(seq 1 $H); do REFS+=("$OUT/_viral/viral_hoja_$h.jpg"); done
   REFS+=("$(guia_zonas $N)")
   local SID TOK LIM=0 RC=0 LOG
   if [ -n "${RECOGER_SID:-}" ]; then SID="$RECOGER_SID"; TOK="-"
@@ -214,6 +247,7 @@ cmd_cupo() { echo "Cuenta '$CUENTA': $(gastadas_24h) imágenes en las últimas 2
 case "${1:-}" in
   bajar)     [ $# -eq 3 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_bajar "$2" "$3" ;;
   nueva)     [ $# -eq 3 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_nueva "$2" "$3" ;;
+  ficha_ia)  [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_ficha_ia "$2" ;;
   comprobar) [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_comprobar "$2" ;;
   generar)   [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_generar "$2" ;;
   corregir)  [ $# -eq 4 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_corregir "$2" "$3" "$4" ;;

@@ -100,7 +100,9 @@ def comprobar(path):
     # cifras: todas tienen que existir en el carrusel original
     viral = cab.get("viral", "")
     fuente = ""
-    if viral and os.path.isdir(viral):
+    if viral.strip().lower() in ("ninguno", "ninguna", "no", ""):
+        fuente = None  # guion propio: no hay original con el que comparar cifras
+    elif os.path.isdir(viral):
         for f in os.listdir(viral):
             if f.endswith((".txt", ".md")):
                 fuente += open(os.path.join(viral, f), encoding="utf-8", errors="ignore").read()
@@ -114,7 +116,7 @@ def comprobar(path):
                     fuente += sec
     else:
         fallos.append(f"No existe la carpeta del viral: {viral}")
-    if fuente and True:
+    if fuente:
         # cifras que Cristian ya dio por buenas aunque el original las escriba de otra forma (p. ej. 1.3B → 1.300 millones)
         conf = cab.get("cifras_confirmadas", "")
         cifras_fuente = numeros(fuente) | numeros(conf)
@@ -188,6 +190,8 @@ def prompt(path, salida, hojas):
         img.append(f"{len(fotos)+2} a {len(fotos)+1+h}: los slides del carrusel original, 6 por hoja, de izquierda a derecha y de arriba abajo.")
     img.append(f"{len(fotos)+2+h}: guía de zonas. Muestra el contador y el pie que pondremos nosotros encima de cada slide. Sus dos zonas quedan libres en tu imagen.")
     base = open(BASE, encoding="utf-8").read()
+    if h == 0:  # sin carrusel original: fuera la línea que habla de él
+        base = "\n".join(l for l in base.split("\n") if not l.startswith("- Carrusel original:"))
     texto = (base.replace("{IMAGENES}", "\n".join(img))
                  .replace("{N}", str(n))
                  .replace("{ROPA}", m["ropa"].split(".")[0])

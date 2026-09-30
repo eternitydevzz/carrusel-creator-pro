@@ -239,7 +239,9 @@ cmd_cerrar() {  # <nombre>: solo tras el ok de Cristian. Usa la skill adaptar-pa
   [ -f "$ESTADO" ] || printf '# Estado de los carruseles\n\n| Carrusel | Fecha | Slides | Imágenes gastadas | Notas |\n|---|---|---|---|---|\n' > "$ESTADO"
   echo "| $nombre | $(date +%F) | $N | $gastadas | cerrado |" >> "$ESTADO"
   echo "CERRADO $nombre: $N JPG listos para subir en $OUT · imágenes gastadas en total: $gastadas · copias de Codex borradas: $borradas"
+  # sin aviso, el [ -n ] devolvía 1 y la app marcaba el cierre como fallido aunque todo hubiera ido bien
   [ -n "$AVISO" ] && echo "$AVISO"
+  return 0
 }
 
 cmd_cupo() { echo "Cuenta '$CUENTA': $(gastadas_24h) imágenes en las últimas 24 h (tope $TOPE)"; }

@@ -128,7 +128,7 @@ export function parsearFicha(texto: string): Ficha {
 }
 export function serializarFicha(f: Ficha): string {
   const ordenCab = ["carrusel", "slides", "cta", "viral", "bandera", "cifras_confirmadas"];
-  const ordenSlide = ["arriba", "titular", "azul", "texto", "debajo", "cta_grande", "idea", "texto_escena", "manos", "ropa", "expresion"];
+  const ordenSlide = ["arriba", "titular", "azul", "texto", "debajo", "cta_grande", "idea", "texto_escena", "personaje", "manos", "ropa", "expresion"];
   const out: string[] = [];
   const cab: Record<string, string> = { ...f.cabecera, slides: String(f.slides.length) };
   for (const k of ordenCab) if (cab[k] !== undefined && cab[k] !== "") out.push(`${k}: ${cab[k]}`);

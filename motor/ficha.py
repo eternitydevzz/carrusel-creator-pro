@@ -86,6 +86,10 @@ def comprobar(path):
     for k, s in slides.items():
         if not s.get("titular") and not s.get("texto"):
             fallos.append(f"Slide {k}: falta 'titular' o 'texto'")
+        if s.get("personaje") and s["personaje"].strip().lower() not in ("si", "sí", "no", "sin", "ninguno"):
+            fallos.append(f"Slide {k}: 'personaje' solo admite si o no (tiene '{s['personaje']}')")
+        if sin_personaje(s) and (s.get("manos") or s.get("expresion")):
+            fallos.append(f"Slide {k}: va sin personaje pero tiene 'manos' o 'expresion'; déjalas vacías")
         if len(s.get("debajo", "")) > 95:
             fallos.append(f"Slide {k}: 'debajo' tiene {len(s['debajo'])} caracteres; más de 95 son 3 líneas y se meten en el pie (pasó en el #11)")
         if s.get("titular"):
@@ -166,6 +170,10 @@ def render_slide(k, s, n):
         out.append(f"El único texto que aparece dentro de la escena es este: {te}. Nada más: ni pestañas, ni fechas, ni cifras, ni logos.")
     else:
         out.append("Dentro de la escena solo puede aparecer texto que esté en el guion (por ejemplo, los datos en tarjetas o cajas). Ningún otro rótulo, pantalla con letras ni logo.")
+    # personaje: no → el slide va sin Cristian (portadas con mascota u objeto, slides de "guarda este post"…)
+    if sin_personaje(s):
+        out.append("SIN PERSONAJE en este slide: aquí no aparece ninguna persona. La escena ocupa todo el encuadre, como en el slide original. La mascota o la persona del original tampoco aparecen.")
+        return "\n".join(out)
     ropa = s.get("ropa") or leer_marca().get("ropa", "").split(".")[0]
     manos = s.get("manos") or MANOS[(k - 1) % len(MANOS)]
     pers = f"Personaje: {ropa}."
@@ -174,6 +182,10 @@ def render_slide(k, s, n):
     pers += f" UNA sola acción con las manos: {manos}."
     out.append(pers)
     return "\n".join(out)
+
+
+def sin_personaje(s):
+    return s.get("personaje", "").strip().lower() in ("no", "sin", "ninguno")
 
 
 def prompt(path, salida, hojas):

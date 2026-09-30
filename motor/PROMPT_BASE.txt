@@ -4,19 +4,19 @@ IMÁGENES ADJUNTAS:
 Crea un carrusel vertical 4:5 (1080 x 1350 px) para Instagram sobre AI, de {N} slides. Actúa como director creativo: lee el guion, encuentra la idea visual más potente de cada slide y conviértela en una imagen que se entienda en menos de 1 segundo y dé ganas de seguir deslizando. Acabado premium, como si lo hubiera diseñado un creador profesional de portadas virales de tecnología.
 
 LO FIJO (branding de la cuenta, no se toca):
-- Personaje: el de las fotos 1, 2 y 3. Misma cara y mismos rasgos en todos los slides. Las fotos son solo para su identidad: no copies ninguna tal cual; cambia el ángulo de la cabeza, la mirada y la expresión en cada slide.
+- Personaje: el de las fotos 1, 2 y 3. Misma cara y mismos rasgos en todos los slides en los que aparece. Las fotos son solo para su identidad: no copies ninguna tal cual; cambia el ángulo de la cabeza, la mirada y la expresión en cada slide. Si el guion de un slide dice "SIN PERSONAJE", en ese slide no hay ninguna persona: la escena lo llena todo.
 - Ropa: {ROPA}. La misma en todos los slides; lo que cambia es la pose, el ángulo y la expresión.
 - Manos: una sola acción por slide, la que indica el guion. Nunca manos de más ni dedos raros; la mano que no hace falta no aparece.
 - Fondo: oscuro y futurista, con alto contraste, aunque el carrusel original tenga fondo claro.
 - Azul de la marca: {AZUL}, sólido y plano, sin degradado. Ni cian ni turquesa. Todos los colores de resaltado del carrusel original pasan a este azul. Solo conservan su color los logos de las herramientas.
 - Letra: Montserrat Black o ExtraBold en los titulares; SemiBold en los textos secundarios. Letra recta y compacta. Blanco plano con una sombra oscura suave. Sin contorno, sin subrayados, sin rayas y sin cajas de color detrás de las palabras.
 - Formato: la imagen ocupa todo el slide, de borde a borde. Sin marco, sin panel y sin bordes desenfocados.
-- Contador y pie: los pondremos nosotros después, encima de tu imagen, exactamente como se ven en la última imagen adjunta (la guía de zonas). Por eso tú no dibujas ningún número de slide, ningún @ ni ningún icono. Las dos zonas que ocupan en la guía, la pastilla de arriba a la izquierda y la franja de abajo con la estrella, quedan en tu imagen solo con fondo de la escena.
-- Dónde va el texto: el titular y el texto secundario ocupan el tercio inferior de la imagen y terminan por encima de la línea con la estrella de la guía. El personaje y la escena ocupan los dos tercios superiores. Nada de texto en la esquina superior izquierda.
+- Contador y pie: los pondremos nosotros después, encima de tu imagen, exactamente como se ven en la última imagen adjunta (la guía de zonas). Por eso tú no dibujas ningún número de slide, ningún @ ni ningún icono. Las dos zonas que ocupan en la guía, la pastilla de arriba a la izquierda y la franja de abajo con el @, quedan en tu imagen solo con fondo de la escena.
+- Dónde va el texto: el titular y el texto secundario ocupan el tercio inferior de la imagen y terminan claramente por encima de la franja del @ de la guía, con aire entre medias. El personaje y la escena ocupan los dos tercios superiores. Nada de texto en la esquina superior izquierda.
 - Texto: escribe solo lo que va entre comillas en el guion, exactamente igual y con todas sus tildes, también en mayúsculas. Los titulares ya están escritos: no los cambies ni los acortes. Todo en español; se dice "AI". Solo quedan en su idioma los nombres de herramientas y marcas.
 - Nada inventado: ningún otro texto, cifra, rótulo, cartel, pantalla con letras ni logo, ni en la escena ni en el fondo. Si un texto no está en el guion, no aparece.
 - Carrusel original: te adjunto sus slides. Cada slide tuyo parte del slide original correspondiente: qué enseña, qué cuenta y cómo lo cuenta. Cambia la composición solo cuando con eso el gancho se entienda mejor. Y siempre con esta marca: su color pasa al azul, su persona pasa a ser el personaje, su idioma pasa al español. Su @, su logo y su tipografía no aparecen.
-- Los {N} slides tienen que verse como un mismo carrusel: mismo personaje, mismo estilo y misma letra.
+- Los {N} slides tienen que verse como un mismo carrusel: mismo personaje cuando aparece, mismo estilo y misma letra.
 
 LO LIBRE (aquí sí propón):
 - Cómo se materializa la idea de cada slide: interfaces, hologramas, objetos, escenas o metáforas que cuenten el gancho mejor que el original.

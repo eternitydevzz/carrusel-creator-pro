@@ -31,6 +31,7 @@ Por slide hay dos formas. La corta es la de Cristian: solo `texto`. La larga con
 | `cta_grande` | Texto grande en azul abajo (llamada a la acción) | No |
 | `idea` | Qué enseña el slide original y qué cuenta | No |
 | `texto_escena` | Textos que aparecen dentro de la escena, entre comillas | No |
+| `personaje` | `si` (por defecto) o `no`. Con `no`, Cristian no sale en ese slide y `manos`/`expresion` van vacías | No |
 | `manos` | La única acción de las manos. Si falta, el script asigna una rotando una lista fija | No |
 | `ropa` | Solo para una excepción. Por defecto, la ropa de `marca.txt`: traje azul marino y camisa blanca en todos los slides | No |
 | `expresion` | Gesto y mirada | No |
@@ -44,6 +45,7 @@ Reglas del copy:
 - El copy lleva el ángulo de `marca.txt`.
 - Ninguna cifra que no esté en el carrusel original. Las que no vengan de ahí se quitan o se le piden a Cristian.
 - Bandera de EEUU solo si el tema es dinero, negocio o EEUU.
+- Cristian no sale a la fuerza. Si el slide original no lleva a su persona (mascota, objeto, icono, solo texto) y la escena funciona sin ella, ese slide va con `personaje: no`. Pasa sobre todo en portadas virales (decisión de Cristian, 30-09-2026, carrusel #12: portada con la máquina de billetes y GitHub, sin él).
 
 ## 3. Palabras prohibidas en la ficha
 

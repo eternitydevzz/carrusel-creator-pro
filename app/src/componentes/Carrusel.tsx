@@ -21,6 +21,7 @@ const CASILLAS: { k: string; etiqueta: string; ayuda?: string; larga?: boolean }
   { k: "cta_grande", etiqueta: "Llamada a la acción grande" },
   { k: "idea", etiqueta: "Idea del original", ayuda: "Qué enseña ese slide y qué cuenta. Es la referencia visual.", larga: true },
   { k: "texto_escena", etiqueta: "Texto dentro de la escena", ayuda: 'Entre comillas y separados por comas, o "ninguno".', larga: true },
+  { k: "personaje", etiqueta: "Personaje en el slide", ayuda: "No, cuando el original tampoco lleva a su persona (portadas con mascota, iconos…)." },
   { k: "manos", etiqueta: "Manos", ayuda: "Una sola acción." },
   { k: "expresion", etiqueta: "Expresión" },
   { k: "texto", etiqueta: "Texto libre del slide", ayuda: "Solo si no hay titular: el generador saca el titular de aquí.", larga: true },
@@ -221,7 +222,9 @@ export function Carrusel({ nombre }: { nombre: string }) {
                   {CASILLAS.filter((c) => c.k !== "texto" || s.texto !== undefined).map((c) => (
                     <div key={c.k} className={c.larga ? "md:col-span-2" : ""}>
                       <Campo etiqueta={c.etiqueta} ayuda={c.ayuda}>
-                        {c.larga ? <textarea className="campo" rows={2} value={s[c.k] ?? ""} onChange={(e) => cambiarSlide(i, c.k, e.target.value)} /> : <input className="campo" value={s[c.k] ?? ""} onChange={(e) => cambiarSlide(i, c.k, e.target.value)} />}
+                        {c.k === "personaje" ? (
+                          <select className="campo" value={(s.personaje ?? "si").toLowerCase() === "no" ? "no" : "si"} onChange={(e) => cambiarSlide(i, "personaje", e.target.value)}><option value="si">Sí</option><option value="no">No</option></select>
+                        ) : c.larga ? <textarea className="campo" rows={2} value={s[c.k] ?? ""} onChange={(e) => cambiarSlide(i, c.k, e.target.value)} /> : <input className="campo" value={s[c.k] ?? ""} onChange={(e) => cambiarSlide(i, c.k, e.target.value)} />}
                       </Campo>
                     </div>
                   ))}

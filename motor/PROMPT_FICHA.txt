@@ -16,6 +16,7 @@ REGLAS DEL COPY:
 - Ninguna cifra que no esté en el carrusel original. Si el original da estrellas, precios o números, úsalos tal cual. Si no, no inventes ninguna.
 - "idea": qué enseña el slide original y qué cuenta, en una o dos frases. Es la referencia visual.
 - "texto_escena": los textos que deben aparecer dentro de la escena (dentro de tarjetas, pantallas, carteles), entre comillas y separados por comas. Si no hace falta ninguno, escribe: ninguno.
+- "personaje": "si" o "no". Pon "no" cuando el slide original NO lleva a su persona (lleva una mascota, un objeto, un icono o solo texto) y la escena funciona sin ella: es lo habitual en portadas virales y en slides de "guarda este post". No metas al personaje a la fuerza. Con "no", deja "manos" y "expresion" vacías.
 - "manos": una sola acción de las manos del personaje (señala con el índice, presenta con la mano abierta, brazos cruzados, mano en la barbilla, sostiene algo en la palma).
 - "expresion": gesto y mirada en 3 o 4 palabras.
 - Nunca copies el @, el nombre ni el logo de la cuenta original. Donde el original pone su cuenta, va {HANDLE}.
@@ -36,6 +37,7 @@ azul: ...
 debajo: "..."
 idea: ...
 texto_escena: "...", "..."
+personaje: si
 manos: ...
 expresion: ...
 

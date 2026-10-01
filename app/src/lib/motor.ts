@@ -14,8 +14,9 @@ export const DATOS_POR_DEFECTO = path.join(RAIZ, "datos");
 export function leerConfig(): { datos?: string } {
   try { return JSON.parse(readFileSync(CONFIG, "utf8")); } catch { return {}; }
 }
-/** Carpeta de datos del usuario: la de la configuración, o datos/ dentro del proyecto. */
+/** Carpeta de datos del usuario: la variable CCP_DATOS (pruebas, varias marcas), la de la configuración, o datos/ dentro del proyecto. */
 export function datos(): string {
+  if (process.env.CCP_DATOS) return process.env.CCP_DATOS;
   const c = leerConfig().datos;
   return c && existsSync(c) ? c : DATOS_POR_DEFECTO;
 }

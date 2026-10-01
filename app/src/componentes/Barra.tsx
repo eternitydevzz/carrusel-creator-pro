@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Home, Images, Palette, Settings, Sparkles } from "lucide-react";
+import { SelectorCliente } from "@/componentes/SelectorCliente";
 
 const enlaces = [
   { href: "/", texto: "Inicio", Icono: Home },
@@ -24,6 +25,7 @@ export function Barra() {
           <span className="block text-[13px] font-semibold" style={{ color: "var(--fg-muted)" }}>Creator Pro</span>
         </span>
       </Link>
+      <SelectorCliente />
       <nav className="flex flex-col gap-1" aria-label="Principal">
         {enlaces.map(({ href, texto, Icono }) => {
           const activo = href === "/" ? ruta === "/" || ruta.startsWith("/carrusel") : ruta.startsWith(href);

@@ -11,18 +11,17 @@ export default function AjustesPagina() {
   const [a, setA] = useState<Ajustes | null>(null);
   const [clave, setClave] = useState("");
   const [cuenta, setCuenta] = useState("");
-  const [ubi, setUbi] = useState<Record<string, string | number>>({});
   const [carpeta, setCarpeta] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [aviso, setAviso] = useState<{ tono: "ok" | "danger"; texto: string } | null>(null);
 
-  async function cargar() { const d = (await (await fetch("/api/ajustes", { cache: "no-store" })).json()) as Ajustes; setA(d); setCuenta(d.cuenta); setUbi(d.ubicacion); setCarpeta(d.datos); }
+  async function cargar() { const d = (await (await fetch("/api/ajustes", { cache: "no-store" })).json()) as Ajustes; setA(d); setCuenta(d.cuenta); setCarpeta(d.datos); }
   // la carga va detrás de una promesa: así el estado se actualiza fuera del efecto (regla react-hooks/set-state-in-effect)
   useEffect(() => { void Promise.resolve().then(cargar); }, []);
 
   async function guardar() {
     setGuardando(true); setAviso(null);
-    await fetch("/api/ajustes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scrapecreators_key: clave || undefined, cuenta, ubicacion: ubi }) });
+    await fetch("/api/ajustes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ scrapecreators_key: clave || undefined, cuenta }) });
     setClave(""); setAviso({ tono: "ok", texto: "Guardado." }); setGuardando(false); await cargar();
   }
 
@@ -83,17 +82,6 @@ export default function AjustesPagina() {
           </form>
         </Panel>
 
-        <Panel className="aparece">
-          <h2 className="mb-1 text-[18px] font-semibold">Ubicación de los metadatos</h2>
-          <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Al cerrar un carrusel se borran todos los metadatos y se escribe solo esta ubicación.</p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {(["ciudad", "estado", "pais", "codigo", "lat", "lon"] as const).map((k) => (
-              <Campo key={k} etiqueta={{ ciudad: "Ciudad", estado: "Estado / provincia", pais: "País", codigo: "Código de país", lat: "Latitud", lon: "Longitud" }[k]}>
-                <input className="campo" value={String(ubi[k] ?? "")} onChange={(e) => setUbi({ ...ubi, [k]: e.target.value })} />
-              </Campo>
-            ))}
-          </div>
-        </Panel>
       </div>
 
       <Panel className="aparece">

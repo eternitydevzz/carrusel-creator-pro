@@ -11,9 +11,11 @@ import { Sfx, iniciarSonidos } from "@/lib/sonidos";
 type Opcion = { v: string; t: string; e?: string };
 type Ajustes = { codex_ok: boolean; claude_ok: boolean; clave_puesta: boolean; creditos: number | null; creditos_error?: string; herramientas: Record<string, boolean> };
 
-const BLOQUES = ["Tú", "Tu marca", "Tu personaje", "Conexiones"];
+// modo "inicial": primera vez del equipo (marca + conexiones). Modo "cliente": un cliente nuevo, sin las conexiones (son del equipo).
+const BLOQUES_INICIAL = ["Tú", "Tu marca", "Tu personaje", "Conexiones"];
+const BLOQUES_CLIENTE = ["El cliente", "Su marca", "Su personaje", "Publicación"];
 // cada paso: su bloque (0-3)
-const PASOS = [
+const PASOS_TODOS = [
   { id: "nombre", b: 0 }, { id: "handle", b: 0 },
   { id: "color", b: 1 }, { id: "angulo", b: 1 }, { id: "lema", b: 1 },
   { id: "fotos", b: 2 }, { id: "estilo", b: 2 }, { id: "ropa", b: 2 },
@@ -86,17 +88,29 @@ export function Bienvenida() {
   const [aj, setAj] = useState<Ajustes | null>(null);
   const [comprobando, setComprobando] = useState(false);
   const [ubicacion, setUbicacion] = useState("newark");
+  const [modo, setModo] = useState<"inicial" | "cliente">("inicial");
+  const [perfilId, setPerfilId] = useState("");
   const titulo = useRef<HTMLHeadingElement>(null);
+  const esCliente = modo === "cliente";
+  const PASOS = esCliente ? PASOS_TODOS.filter((p) => p.id !== "clave" && p.id !== "conexiones") : PASOS_TODOS;
+  const BLOQUES = esCliente ? BLOQUES_CLIENTE : BLOQUES_INICIAL;
+  /** El texto según a quién se le habla: a quien configura su marca, o sobre un cliente. */
+  const t = (inicial: string, deCliente: string) => (esCliente ? deCliente : inicial);
 
   // lo que ya hubiera (si se repite la bienvenida, no se empieza de cero)
   useEffect(() => {
     iniciarSonidos();
     let vivo = true;
+    fetch("/api/bienvenida", { cache: "no-store" }).then((r) => r.json()).then((b: { modo: "inicial" | "cliente"; perfil: string; nombre: string }) => {
+      if (!vivo) return;
+      setModo(b.modo); setPerfilId(b.perfil);
+      if (b.modo === "cliente" && b.nombre && b.nombre !== "Nuevo cliente") setNombre(b.nombre); // el nombre provisional no se precarga
+    }).catch(() => {});
     fetch("/api/marca", { cache: "no-store" }).then((r) => r.json()).then((d: { marca: Record<string, string>; fotos: string[]; tipografia: string }) => {
       if (!vivo) return;
       setMudo(Sfx.enSilencio());
       const m = d.marca;
-      if (m.nombre) setNombre(m.nombre);
+      if (m.nombre) setNombre((n) => n || m.nombre);
       if (m.handle && m.handle !== "@tucuenta") setHandle(m.handle);
       if (m.azul) { const c = COLORES.find((x) => x.hex.toLowerCase() === m.azul.toLowerCase()); if (c) setColor(c.v); else { setColor("otro"); setColorOtro(m.azul); } }
       if (m.angulo) { if (ANGULOS.some((a) => a.v === m.angulo)) setAngulo(m.angulo); else { setAngulo("otro"); setAnguloOtro(m.angulo); } }
@@ -120,7 +134,7 @@ export function Bienvenida() {
 
   const valido = (): string => {
     switch (idPaso) {
-      case "nombre": return nombre.trim() ? "" : "Escribe tu nombre";
+      case "nombre": return nombre.trim() ? "" : t("Escribe tu nombre", "Escribe el nombre del cliente");
       case "handle": return /^@?[A-Za-z0-9._]{2,30}$/.test(handle.trim()) ? "" : "Escribe tu cuenta, por ejemplo @tucuenta";
       case "color": return !color ? "Elige un color" : color === "otro" && !/^#[0-9a-fA-F]{6}$/.test(colorOtro) ? "Elige el color" : "";
       case "angulo": return !angulo ? "Elige una opción" : angulo === "otro" && !anguloOtro.trim() ? "Escribe a quién le hablas" : "";
@@ -154,7 +168,8 @@ export function Bienvenida() {
       const r1 = await fetch("/api/marca", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(marca) });
       if (!r1.ok) throw new Error((await r1.json()).error ?? "No se pudo guardar la marca");
       await fetch("/api/ajustes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ubicacion: u }) });
-      await fetch("/api/bienvenida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hecha: true }) });
+      if (perfilId) await fetch("/api/perfiles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "renombrar", id: perfilId, nombre: nombre.trim() }) });
+      await fetch("/api/bienvenida", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ hecha: true, modo }) });
     } catch (e) { setPaso(PASOS.length - 1); setError((e as Error).message); return; }
     await new Promise((r) => setTimeout(r, Math.max(0, 1400 - (Date.now() - inicio))));
     setPaso(PASOS.length + 1);
@@ -237,34 +252,35 @@ export function Bienvenida() {
   const pregunta = () => {
     switch (idPaso) {
       case "nombre": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>¿Cómo te llamas?</h2>
-        <input className={`cm-input${error ? " is-bad" : ""}`} autoFocus value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder="Tu nombre" autoComplete="given-name" />
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("¿Cómo te llamas?", "¿Cómo se llama el cliente?")}</h2>
+        {esCliente && <p className="cm-q__help">Su nombre o el de su marca. Es como lo verás en el selector de clientes.</p>}
+        <input className={`cm-input${error ? " is-bad" : ""}`} autoFocus value={nombre} onChange={(e) => setNombre(e.target.value)} placeholder={t("Tu nombre", "Nombre del cliente")} autoComplete={esCliente ? "off" : "given-name"} />
       </>);
       case "handle": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{nombre ? `${nombre.split(" ")[0]}, ¿cuál es tu cuenta de Instagram?` : "¿Cuál es tu cuenta de Instagram?"}</h2>
-        <p className="cm-q__help">Sale en el pie de todos tus slides.</p>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{esCliente ? `¿Cuál es la cuenta de Instagram de ${nombre.trim() || "el cliente"}?` : nombre ? `${nombre.split(" ")[0]}, ¿cuál es tu cuenta de Instagram?` : "¿Cuál es tu cuenta de Instagram?"}</h2>
+        <p className="cm-q__help">{t("Sale en el pie de todos tus slides.", "Sale en el pie de todos sus slides.")}</p>
         <input className={`cm-input${error ? " is-bad" : ""}`} autoFocus value={handle} onChange={(e) => setHandle(e.target.value.replace(/\s/g, ""))} placeholder="@tucuenta" autoCapitalize="none" />
       </>);
       case "color": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>¿Cuál es el color de tu marca?</h2>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("¿Cuál es el color de tu marca?", "¿Cuál es el color de su marca?")}</h2>
         <p className="cm-q__help">Va en los titulares, los botones y los detalles de cada slide.</p>
         {tarjetas(COLORES, color, setColor)}
         {color === "otro" && <div className="cm-field"><label htmlFor="cm-color">Tu color</label><input id="cm-color" type="color" className="cm-input" style={{ padding: 6 }} value={colorOtro} onChange={(e) => setColorOtro(e.target.value.toUpperCase())} /></div>}
       </>);
       case "angulo": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>¿A quién le hablas?</h2>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("¿A quién le hablas?", "¿A quién le habla?")}</h2>
         <p className="cm-q__help">Claude lo usa para escribir cada carrusel y su descripción.</p>
         {tarjetas(ANGULOS, angulo, setAngulo)}
         {angulo === "otro" && <textarea className="cm-input" rows={2} autoFocus value={anguloOtro} onChange={(e) => setAnguloOtro(e.target.value)} placeholder="Por ejemplo: ayudar a dueños de restaurantes a automatizar con AI" />}
       </>);
       case "lema": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>Tu lema para el pie</h2>
-        <p className="cm-q__help">Una frase corta que sale debajo de tu cuenta en todos los slides.</p>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("Tu lema para el pie", "Su lema para el pie")}</h2>
+        <p className="cm-q__help">{t("Una frase corta que sale debajo de tu cuenta en todos los slides.", "Una frase corta que sale debajo de su cuenta en todos los slides.")}</p>
         <input className={`cm-input${error ? " is-bad" : ""}`} autoFocus value={lema} onChange={(e) => setLema(e.target.value.toUpperCase())} placeholder="SISTEMAS DE AI PARA EMPRESAS EN USA" maxLength={48} />
       </>);
       case "fotos": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>Sube 2 o 3 fotos tuyas</h2>
-        <p className="cm-q__help">De frente, con buena luz y de distintos ángulos. Codex las usa para que en cada slide salgas tú.</p>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("Sube 2 o 3 fotos tuyas", `Sube 2 o 3 fotos de ${nombre.trim() || "el cliente"}`)}</h2>
+        <p className="cm-q__help">{t("De frente, con buena luz y de distintos ángulos. Codex las usa para que en cada slide salgas tú.", "De frente, con buena luz y de distintos ángulos. Codex las usa para que salga en cada slide.")}</p>
         {fotos.length > 0 && <div className="cm-thumbs">{fotos.map((f) => (
           <div key={f} className="cm-thumb">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -283,8 +299,8 @@ export function Bienvenida() {
         <Zona onFiles={(l) => subir(l, "tipografia")} subiendo={subiendo} encima={encima} setEncima={setEncima} texto={estilo ? "Cambiar la referencia" : "Arrastra la imagen aquí"} />
       </>);
       case "ropa": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>¿Qué ropa llevas en los slides?</h2>
-        <p className="cm-q__help">Siempre la misma, para que tu marca se reconozca.</p>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("¿Qué ropa llevas en los slides?", "¿Qué ropa lleva en los slides?")}</h2>
+        <p className="cm-q__help">{t("Siempre la misma, para que tu marca se reconozca.", "Siempre la misma, para que su marca se reconozca.")}</p>
         {tarjetas(ROPAS, ropa, setRopa)}
         {ropa === "otro" && <input className="cm-input" autoFocus value={ropaOtra} onChange={(e) => setRopaOtra(e.target.value)} placeholder="Por ejemplo: polo negro con el logo" />}
       </>);
@@ -306,7 +322,7 @@ export function Bienvenida() {
         </>)}
       </>);
       case "ubicacion": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>¿Dónde publicas?</h2>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("¿Dónde publicas?", "¿Dónde publica?")}</h2>
         <p className="cm-q__help">Al cerrar cada carrusel se borran los metadatos de AI y se escribe esta ubicación. La puedes cambiar en Ajustes.</p>
         {tarjetas(UBICACIONES, ubicacion, setUbicacion)}
       </>);
@@ -326,12 +342,12 @@ export function Bienvenida() {
               <img src="/maestria.png" alt="Código MaestrIA" />
             </div>
             <span className="cm-eyebrow">Código MaestrIA · Carrusel Creator Pro</span>
-            <h1 className="cm-pop__title" tabIndex={-1}>Bienvenido a tu fábrica de carruseles</h1>
-            <p className="cm-pop__sub">Deja tu marca lista en 3 minutos y crea tu primer carrusel.</p>
+            <h1 className="cm-pop__title" tabIndex={-1}>{t("Bienvenido a tu fábrica de carruseles", "Nuevo cliente")}</h1>
+            <p className="cm-pop__sub">{t("Deja tu marca lista en 3 minutos y crea tu primer carrusel.", "Deja su marca lista en 2 minutos. Sus carruseles quedan aparte de los demás clientes.")}</p>
             <ul className="cm-bullets">
-              <li><span>🎨</span>Tu marca: cuenta, color y lema</li>
-              <li><span>📸</span>Tus fotos, para salir en cada slide</li>
-              <li><span>🔌</span>Tus conexiones: Codex, Claude y ScrapeCreators</li>
+              <li><span>🎨</span>{t("Tu marca: cuenta, color y lema", "Su marca: cuenta, color y lema")}</li>
+              <li><span>📸</span>{t("Tus fotos, para salir en cada slide", "Sus fotos, para que salga en cada slide")}</li>
+              <li><span>{esCliente ? "📍" : "🔌"}</span>{t("Tus conexiones: Codex, Claude y ScrapeCreators", "Dónde publica, para los metadatos")}</li>
             </ul>
             <button type="button" className="cm-btn cm-btn--block" onClick={() => void siguiente()}>Empezar</button>
             <p className="cm-hint" style={{ marginTop: 14 }}>o pulsa Enter ↵</p>
@@ -364,16 +380,18 @@ export function Bienvenida() {
         {paso === PASOS.length + 1 && (
           <div className="cm-result">
             <div className="cm-result__ok" aria-hidden="true">✓</div>
-            <h1 className="cm-pop__title" tabIndex={-1}>¡Todo listo, {nombreCorto}!</h1>
+            <h1 className="cm-pop__title" tabIndex={-1}>{esCliente ? `¡La marca de ${nombre.trim()} está lista!` : `¡Todo listo, ${nombreCorto}!`}</h1>
             <div className="cm-sum">
               <div><span>Cuenta</span><b>{handle.startsWith("@") ? handle : "@" + handle}</b></div>
               <div><span>Color</span><b style={{ color: color === "otro" ? colorOtro : color }}>● {color === "otro" ? colorOtro : COLORES.find((c) => c.v === color)?.t}</b></div>
               <div><span>Lema</span><b>{lema}</b></div>
               <div><span>Fotos</span><b>{fotos.length} + referencia de estilo</b></div>
-              <div><span>Codex</span><b>{aj?.codex_ok ? "Conectado ✓" : "Pendiente"}</b></div>
+              {esCliente
+                ? <div><span>Publica en</span><b>{UBICACIONES.find((u) => u.v === ubicacion)?.t}</b></div>
+                : <div><span>Codex</span><b>{aj?.codex_ok ? "Conectado ✓" : "Pendiente"}</b></div>}
             </div>
-            <button type="button" className="cm-btn cm-btn--block" onClick={() => { Sfx.advance(); router.push("/"); }}>Crear mi primer carrusel</button>
-            <button type="button" className="cm-back" onClick={() => router.push("/branding")}>Revisar mi marca</button>
+            <button type="button" className="cm-btn cm-btn--block" onClick={() => { Sfx.advance(); router.push("/"); }}>{t("Crear mi primer carrusel", "Crear su primer carrusel")}</button>
+            <button type="button" className="cm-back" onClick={() => router.push("/branding")}>{t("Revisar mi marca", "Revisar su marca")}</button>
           </div>
         )}
       </div>

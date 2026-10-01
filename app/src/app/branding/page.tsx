@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Trash2, Upload } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel } from "@/componentes/ui";
+import { PanelCliente } from "@/componentes/PanelCliente";
 
 type Marca = { marca: Record<string, string>; fotos: string[]; tipografia: string; referencias: string[] };
 
@@ -41,7 +42,8 @@ export default function Branding() {
 
   return (
     <div className="flex flex-col gap-6">
-      <Cabecera titulo="Branding" texto="Tu kit de marca. Es lo único que cambia de una cuenta a otra: el resto del sistema no se toca." />
+      <Cabecera titulo="Branding" texto="El kit de marca del cliente activo. Cada cliente tiene el suyo; para cambiar de cliente, usa el selector de la barra lateral." />
+      <PanelCliente />
       {aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}
 
       <div className="grid gap-6 lg:grid-cols-2">

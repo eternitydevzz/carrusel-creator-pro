@@ -41,6 +41,16 @@ Si Codex no está conectado, la bienvenida te da la orden exacta para la Termina
 
 Para probar con otra marca sin tocar la tuya, arranca con otra carpeta de datos: `CCP_DATOS=/ruta/a/otra/carpeta ./arrancar.sh`.
 
+## Varios clientes
+
+Cada cliente tiene **su marca** (fotos, @, color, lema, ángulo, ropa), **su ubicación** para los metadatos y **su biblioteca** de carruseles. Se cambia de cliente con el selector de arriba en la barra lateral; ahí también está **"+ Nuevo cliente"**, que abre una bienvenida corta (9 pasos) para dejar su marca lista. Nombre, ubicación y **Eliminar cliente** están en **Branding**.
+
+Lo que se comparte entre clientes: la cuenta de Codex y su cupo de imágenes (una sola generación a la vez entre todos), la clave de ScrapeCreators y los ajustes.
+
+En disco: `datos/perfiles/<cliente>/` (marca, fichas, originales, carruseles y `perfil.json`). Eliminar un cliente no borra nada: su carpeta pasa a `datos/_papelera/`. Si tus datos son de antes de los clientes, la app los convierte sola la primera vez que la abres, después de guardar una copia en `datos/_copias/`.
+
+Desde la Terminal: `PERFIL=<cliente> motor/carrusel.sh ...` trabaja con otro cliente sin cambiar el activo.
+
 ## Cómo funciona
 
 | Paso | Quién | Qué pasa |
@@ -80,7 +90,7 @@ A veces Codex lleva la escena hasta abajo y tapa el @. Sin gastar imágenes: `mo
 ```
 app/      la interfaz (Next.js) y su API local
 motor/    los scripts que hacen el trabajo: carrusel.sh, ficha.py, plantilla.swift, adaptar.sh
-datos/    lo tuyo, fuera de git: marca/, fichas/, virales/, salida/, CUPO.csv, ajustes.json
+datos/    lo tuyo, fuera de git: perfiles/<cliente>/ (marca, fichas, virales, salida), CUPO.csv y ajustes.json compartidos
 ```
 
 El motor se puede usar solo, sin la interfaz: `motor/carrusel.sh` sin argumentos enseña las órdenes.

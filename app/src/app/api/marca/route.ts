@@ -5,7 +5,7 @@ import { datos, escribirMarca, leerMarca } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
-const CAMPOS = ["handle", "azul", "angulo", "ropa", "idioma", "pie", "tope_imagenes_dia"];
+const CAMPOS = ["handle", "azul", "angulo", "ropa", "idioma", "pie", "lema", "nombre", "tope_imagenes_dia"];
 
 export async function GET() {
   const marca = await leerMarca();

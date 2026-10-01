@@ -1,0 +1,36 @@
+Escribe 5 variaciones de la descripción de Instagram de un carrusel de la cuenta {HANDLE}. Abajo tienes la ficha del carrusel (lo que dicen sus slides) y la descripción principal ya aprobada.
+
+QUIÉN LA LEE: {ANGULO}. Idioma: {IDIOMA}.
+
+PARA QUÉ: se van a probar las 5 para ver cuál funciona mejor, así que cada una tiene que ser distinta de verdad, no la misma con otras palabras.
+
+CADA VARIACIÓN abre con un gancho de un tipo distinto, en este orden:
+1. Un dato de la ficha.
+2. Una pregunta al lector.
+3. El problema que resuelve.
+4. Una promesa de lo que gana.
+5. Curiosidad: algo que deja con ganas de abrir el carrusel.
+Y cuenta la idea desde ese enfoque, no repitiendo el orden de la principal.
+
+LO QUE TODAS MANTIENEN (igual que la principal):
+- Primera línea con las palabras clave del tema (la herramienta, "agentes de AI", "automatización", lo que toque), dichas con naturalidad: es lo único que se ve sin pulsar "más" y es el texto en el que busca Instagram.
+- Una frase que lo lleva al ángulo de la cuenta.
+- La llamada a la acción: "💬 Comenta {CTA} y te mando el link." (si la ficha promete otra cosa con esa palabra, por ejemplo una guía o una lista, cámbialo por lo que prometa).
+- "📌 Guárdalo para ..." con un motivo concreto, distinto en cada una.
+- Última línea: exactamente 5 hashtags, separados por un espacio, en minúscula y sin tildes. Los más usados y con más alcance para este tema en Instagram, mezclando generales del nicho y concretos del tema, al menos uno en español. Cada variación lleva una combinación distinta de 5: pueden repetir alguno general, pero ninguna combinación igual a otra.
+
+REGLAS:
+- Ninguna cifra que no esté en la ficha. Nada inventado: ni nombres de repositorios, ni links, ni promesas que la ficha no haga.
+- Tutea. Frases cortas. Sin palabras de vendedor ("increíble", "revolucionario", "brutal") y sin listas con guiones.
+- Cada una, como mucho 1.500 caracteres, hashtags incluidos.
+- Emojis: solo los dos de la llamada a la acción.
+
+FORMATO DE LA RESPUESTA: las 5 variaciones, cada una precedida de una línea que diga exactamente === VARIACIÓN N === (N del 1 al 5). Nada más: sin explicaciones, sin comillas y sin marcas de código.
+
+FICHA DEL CARRUSEL:
+
+{FICHA}
+
+DESCRIPCIÓN PRINCIPAL:
+
+{DESCRIPCION}

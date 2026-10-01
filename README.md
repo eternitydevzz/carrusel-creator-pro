@@ -13,6 +13,12 @@ Convierte carruseles virales de Instagram (o tu propio guion) en carruseles con 
 - Una clave de [ScrapeCreators](https://scrapecreators.com) para descargar los carruseles originales (1 crédito por carrusel).
 - Tus fotos: 2 o 3 del personaje y una referencia de estilo.
 
+Cada persona usa **sus propias cuentas** (ChatGPT para Codex, Claude, ScrapeCreators) y **su propia marca**. Nada se comparte entre usuarios: tus fotos, fichas, carruseles y claves viven en `datos/`, que nunca se sube a GitHub.
+
+### ¿Por qué no se puede subir a Vercel?
+
+No es solo poner unas claves. La app depende de cosas que solo hay en un Mac: el pie se dibuja con Swift y las imágenes se recortan con `sips`; Codex y Claude Code se usan con la sesión de tu plan (sin pagar API); los carruseles se guardan en disco y cada generación tarda de 5 a 12 minutos en segundo plano. En la nube habría que reescribirla y pagar cada imagen por API.
+
 ## Instalar
 
 ```bash
@@ -32,7 +38,7 @@ El instalador pone Node, ffmpeg y exiftool con Homebrew, instala Codex CLI si no
 Abre `http://localhost:3000`. La primera vez:
 
 1. **Ajustes:** conecta Codex (`codex login` en la Terminal si no lo está), pega tu clave de ScrapeCreators y ponle un nombre a tu cuenta.
-2. **Branding:** sube 2 o 3 fotos del personaje, una referencia de estilo, tu @, tu color, tu ángulo de comunicación y la ropa del personaje.
+2. **Branding:** sube 2 o 3 fotos del personaje, una referencia de estilo, tu @, el lema del pie, tu color, tu ángulo de comunicación y la ropa del personaje. Sin fotos no se puede generar.
 3. **Inicio:** pega un link de Instagram o tu guion.
 
 ## Cómo funciona
@@ -45,9 +51,29 @@ Abre `http://localhost:3000`. La primera vez:
 | Generar | Codex, una llamada | Genera la escena de cada slide, sin pie ni contador |
 | Estampar | La app | Pone el contador y el pie idénticos en todos los slides |
 | Revisión | Tú | Ves cada slide en grande, corriges lo que falle (1 imagen por corrección) y apruebas |
+| Descripción | Claude Code | Botón "Crear descripción": texto para Instagram con 5 hashtags (propuestos por Claude, sin medir). "Crear 5 variaciones": cinco versiones con otro gancho, para probar |
 | Cerrar | La app | Exporta JPG a 1080×1350 sin metadatos de AI, con la ubicación que elijas, y los deja para descargar en ZIP |
 
 Dos paradas tuyas, la ficha y el resultado, porque hoy salen bien a la primera unos 5 de cada 7 slides.
+
+## Actualizar
+
+Cuando haya una versión nueva:
+
+```bash
+git pull
+./instalar.sh
+```
+
+Tus datos no se tocan.
+
+## Versiones probadas
+
+El motor usa opciones concretas de Codex CLI y de Claude Code. Está probado con **Codex CLI 0.158.0** y **Claude Code 2.1**. El instalador pone esa versión de Codex y avisa si tienes otra. Si al generar falla con un error de opciones, vuelve a esa versión: `npm install -g @openai/codex@0.158.0`.
+
+## Si algo pisa el pie
+
+A veces Codex lleva la escena hasta abajo y tapa el @. Sin gastar imágenes: `motor/carrusel.sh encoger <carrusel> <n>` encoge la escena de ese slide para dejar libre el pie (con `<factor> <px>` al final se puede encoger más o bajarla si el titular choca con el contador).
 
 ## Estructura
 

@@ -60,6 +60,7 @@ export default function Branding() {
           </Campo>
           <div className="md:col-span-2"><Campo etiqueta="Ángulo de comunicación" ayuda="Lo que todo copy tiene que conectar. Ejemplo: vender sistemas de AI a empresas en USA."><textarea className="campo" rows={2} value={campos.angulo ?? ""} onChange={(e) => setCampos({ ...campos, angulo: e.target.value })} /></Campo></div>
           <div className="md:col-span-2"><Campo etiqueta="Ropa del personaje" ayuda="La misma en todos los slides. Ejemplo: traje azul marino y camisa blanca, sin corbata."><input className="campo" value={campos.ropa ?? ""} onChange={(e) => setCampos({ ...campos, ropa: e.target.value })} /></Campo></div>
+          <Campo etiqueta="Lema del pie" ayuda="Frase pequeña debajo de tu cuenta, en todos los slides. Ejemplo: SISTEMAS DE AI PARA EMPRESAS EN USA."><input className="campo" value={campos.lema ?? ""} onChange={(e) => setCampos({ ...campos, lema: e.target.value })} placeholder="TU LEMA EN MAYÚSCULAS" /></Campo>
           <Campo etiqueta="Idioma" ayuda='Por ejemplo: español. Se dice "AI", nunca "IA".'><input className="campo" value={campos.idioma ?? ""} onChange={(e) => setCampos({ ...campos, idioma: e.target.value })} /></Campo>
           <Campo etiqueta="Tope de imágenes al día" ayuda="Codex bloquea en torno a 60 por cuenta. El sistema no lanza si no hay sitio."><input className="campo" inputMode="numeric" value={campos.tope_imagenes_dia ?? "60"} onChange={(e) => setCampos({ ...campos, tope_imagenes_dia: e.target.value })} /></Campo>
         </div>

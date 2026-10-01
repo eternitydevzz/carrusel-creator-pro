@@ -12,7 +12,7 @@ function nombreDesdeUrl(url: string) {
   return m ? `ig_${m[1]}` : null;
 }
 
-/** El guion propio va como el de Cristian: bloques "SLIDE 1", "SLIDE 2"… con el texto debajo. */
+/** El guion propio va en bloques: bloques "SLIDE 1", "SLIDE 2"… con el texto debajo. */
 function guionAFicha(nombre: string, guion: string): { texto: string; n: number } {
   const bloques = guion.split(/^\s*SLIDE\s+\d+\s*:?\s*$/im).map((b) => b.trim()).filter(Boolean);
   const slides: Slide[] = bloques.map((b) => ({ texto: b.replace(/\s*\n\s*/g, " ").trim() }));

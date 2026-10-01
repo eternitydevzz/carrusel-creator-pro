@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cliente, existe, motor, motorFondo, nombreSeguro, serializarFicha, type Slide } from "@/lib/motor";
+import { cliente, cuerpoJson, existe, motor, motorFondo, nombreSeguro, serializarFicha, type Slide } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -14,14 +14,16 @@ function nombreDesdeUrl(url: string) {
 
 /** El guion propio va en bloques: bloques "SLIDE 1", "SLIDE 2"… con el texto debajo. */
 function guionAFicha(nombre: string, guion: string): { texto: string; n: number } {
-  const bloques = guion.split(/^\s*SLIDE\s+\d+\s*:?\s*$/im).map((b) => b.trim()).filter(Boolean);
+  // lo que hay antes del primer "SLIDE n" (un título, notas) no es un slide; sin ningún "SLIDE n" no hay slides
+  const partes = guion.split(/^\s*SLIDE\s+\d+\s*:?\s*$/im);
+  const bloques = partes.slice(1).map((b) => b.trim()).filter(Boolean);
   const slides: Slide[] = bloques.map((b) => ({ texto: b.replace(/\s*\n\s*/g, " ").trim() }));
   const cta = /COMENTA\s+"?([A-ZÁÉÍÓÚÑ]+)"?/i.exec(guion)?.[1]?.toUpperCase() ?? "";
   return { texto: serializarFicha({ cabecera: { carrusel: nombre, slides: String(slides.length), cta, viral: "ninguno", bandera: "no", cifras_confirmadas: "todas (guion propio)" }, slides }), n: slides.length };
 }
 
 export async function POST(req: Request) {
-  const p = (await req.json()) as Peticion;
+  const p = (await cuerpoJson<Peticion>(req)) as Peticion;
   let nombre = (p.nombre ?? "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
   if (p.modo === "link") {
     const url = (p.url ?? "").trim();

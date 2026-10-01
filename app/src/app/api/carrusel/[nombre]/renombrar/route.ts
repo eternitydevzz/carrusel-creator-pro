@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
-import { cliente, existe, leerEstado, limpiarNombre, nombreSeguro, renombrar } from "@/lib/motor";
+import { cliente, cuerpoJson, existe, leerEstado, limpiarNombre, nombreSeguro, renombrar } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 export async function POST(req: Request, { params }: { params: Promise<{ nombre: string }> }) {
   const { nombre } = await params;
   if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
-  const { nuevo } = (await req.json()) as { nuevo?: string };
+  const { nuevo } = (await cuerpoJson<{ nuevo: string }>(req));
   const limpio = limpiarNombre(nuevo ?? "");
   if (!limpio) return NextResponse.json({ error: "El nombre tiene que tener letras o números" }, { status: 400 });
   if (limpio === nombre) return NextResponse.json({ ok: true, nombre });

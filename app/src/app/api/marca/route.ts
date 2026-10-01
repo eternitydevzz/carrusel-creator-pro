@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cliente, datos, escribirMarca, leerMarca } from "@/lib/motor";
+import { cliente, cuerpoJson, datos, escribirMarca, leerMarca } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +17,7 @@ export async function GET() {
 
 /** Guarda los campos de texto del kit de marca. Las fotos van por /api/marca/foto. */
 export async function POST(req: Request) {
-  const cuerpo = (await req.json()) as Record<string, string>;
+  const cuerpo = (await cuerpoJson(req)) as Record<string, string>;
   const marca = await leerMarca();
   for (const k of CAMPOS) if (typeof cuerpo[k] === "string") marca[k] = cuerpo[k].replace(/\n/g, " ").trim();
   if (marca.azul && !/^#[0-9a-fA-F]{6}$/.test(marca.azul)) return NextResponse.json({ error: "El color tiene que ser un código como #1A79FB" }, { status: 400 });

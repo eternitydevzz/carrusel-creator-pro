@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cliente, escribirMarca, leerMarca } from "@/lib/motor";
+import { cliente, cuerpoJson, escribirMarca, leerMarca } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -19,6 +19,7 @@ export async function POST(req: Request) {
   await fs.mkdir(carpeta, { recursive: true });
   const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter(Boolean);
   const guardados: string[] = [];
+  const fallidos: string[] = [];
 
   for (const a of archivos) {
     const base = tipo === "personaje" ? `personaje_${Date.now()}_${guardados.length + 1}` : tipo === "tipografia" ? "tipografia" : `ref_${Date.now()}_${guardados.length + 1}`;
@@ -26,10 +27,13 @@ export async function POST(req: Request) {
     await fs.writeFile(tmp, Buffer.from(await a.arrayBuffer()));
     // todo pasa a JPG con sips (acepta HEIC, PNG, WEBP…) y se limita a 1600 px para no cargar el prompt
     const destino = path.join(carpeta, `${base}.jpg`);
-    await new Promise<void>((res, rej) => execFile("sips", ["-s", "format", "jpeg", "-Z", "1600", tmp, "--out", destino], (e) => (e ? rej(e) : res()))).catch(async () => { await fs.rm(tmp, { force: true }); });
+    const ok = await new Promise<boolean>((res) => execFile("sips", ["-s", "format", "jpeg", "-Z", "1600", tmp, "--out", destino], (e) => res(!e)));
     await fs.rm(tmp, { force: true });
-    guardados.push(path.relative(path.join(cliente(), "marca"), destino));
+    // solo cuenta si de verdad salió un JPG: si no, una foto fallida desplazaría a una buena del máximo de 3
+    if (ok && (await fs.stat(destino).then((st) => st.size > 0, () => false))) guardados.push(path.relative(path.join(cliente(), "marca"), destino));
+    else { await fs.rm(destino, { force: true }); fallidos.push(a.name || "archivo"); }
   }
+  if (!guardados.length) return NextResponse.json({ error: `No se pudo leer como imagen: ${fallidos.join(", ")}. Usa JPG, PNG o HEIC.` }, { status: 400 });
 
   if (tipo === "personaje") {
     // se conservan como máximo 3 fotos: las nuevas primero
@@ -39,11 +43,12 @@ export async function POST(req: Request) {
   }
   if (tipo === "tipografia") marca.tipografia = guardados[0];
   await escribirMarca(marca);
-  return NextResponse.json({ ok: true, guardados, marca });
+  return NextResponse.json({ ok: true, guardados, fallidos, marca });
 }
 
 export async function DELETE(req: Request) {
-  const { ruta } = (await req.json()) as { ruta: string };
+  const { ruta } = (await cuerpoJson<{ ruta: string }>(req));
+  if (typeof ruta !== "string" || !ruta) return NextResponse.json({ error: "Falta la foto" }, { status: 400 });
   const absoluta = path.resolve(cliente(), "marca", ruta);
   if (!absoluta.startsWith(path.resolve(cliente(), "marca") + path.sep)) return NextResponse.json({ error: "Ruta no permitida" }, { status: 400 });
   await fs.rm(absoluta, { force: true });

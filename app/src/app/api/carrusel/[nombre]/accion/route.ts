@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cliente, motor, motorFondo, nombreSeguro, ordenEnCurso } from "@/lib/motor";
+import { cliente, cuerpoJson, motor, motorFondo, nombreSeguro, ordenEnCurso } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ type Accion = { accion: "generar" | "corregir" | "cerrar" | "ficha_ia" | "revisa
 export async function POST(req: Request, { params }: { params: Promise<{ nombre: string }> }) {
   const { nombre } = await params;
   if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
-  const a = (await req.json()) as Accion;
+  const a = (await cuerpoJson<Accion>(req)) as Accion;
   const D = cliente();
   const estadoSalida = path.join(D, "salida", nombre, "_estado.json");
 

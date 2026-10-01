@@ -210,7 +210,12 @@ def prompt(path, salida, hojas):
     cab, slides = leer_ficha(path)
     m = leer_marca()
     n = int(cab["slides"])
-    fotos = [f.strip() for f in m["fotos"].split(",")]
+    # marca incompleta (cliente recién creado o marca.txt editado a mano): avisar de qué falta, sin errores de Python
+    faltan = [q for k, q in (("fotos", "las fotos del personaje"), ("tipografia", "la referencia de estilo"), ("ropa", "la ropa"), ("azul", "el color")) if not m.get(k, "").strip()]
+    if faltan:
+        verbo = "le falta" if len(faltan) == 1 and not faltan[0].startswith("las ") else "le faltan"
+        raise SystemExit(f"FALTA_MARCA: a la marca de este cliente {verbo} {', '.join(faltan)}. Complétalo en Branding antes de generar.")
+    fotos = [f.strip() for f in m["fotos"].split(",") if f.strip()]
     img = [f"{i+1}: foto del personaje." for i in range(len(fotos))]
     img.append(f"{len(fotos)+1}: miniatura de la marca, referencia de tipografía y acabado.")
     h = int(hojas)

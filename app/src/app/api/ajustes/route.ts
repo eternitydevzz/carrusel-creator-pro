@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { CONFIG, DATOS_POR_DEFECTO, PATH, cambiarDatos, cliente, datos, escribirAjustes, leerAjustes, leerTexto, motor } from "@/lib/motor";
+import { cambiarDatos, cliente, CONFIG, cuerpoJson, datos, DATOS_POR_DEFECTO, escribirAjustes, leerAjustes, leerTexto, motor, PATH } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -45,7 +45,7 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
-  const cuerpo = (await req.json()) as { scrapecreators_key?: string; cuenta?: string; ubicacion?: Record<string, unknown>; datos?: string };
+  const cuerpo = (await cuerpoJson(req)) as { scrapecreators_key?: string; cuenta?: string; ubicacion?: Record<string, unknown>; datos?: string };
   if (typeof cuerpo.datos === "string" && cuerpo.datos.trim()) {
     try { const abs = await cambiarDatos(cuerpo.datos); return NextResponse.json({ ok: true, datos: abs }); }
     catch (e) { return NextResponse.json({ error: `No se pudo usar esa carpeta: ${(e as Error).message}` }, { status: 400 }); }

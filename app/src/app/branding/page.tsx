@@ -31,7 +31,9 @@ export default function Branding() {
     setSubiendo(tipo); setAviso(null);
     const fd = new FormData(); fd.append("tipo", tipo); for (const a of Array.from(archivos)) fd.append("archivos", a);
     const r = await fetch("/api/marca/foto", { method: "POST", body: fd });
-    if (!r.ok) setAviso({ tono: "danger", texto: (await r.json()).error ?? "No se pudo subir" });
+    const d = await r.json();
+    if (!r.ok) setAviso({ tono: "danger", texto: d.error ?? "No se pudo subir" });
+    else if (d.fallidos?.length) setAviso({ tono: "danger", texto: `No se pudo leer como imagen: ${d.fallidos.join(", ")}. Las demás se guardaron.` });
     setSubiendo(null); await cargar();
   }
 

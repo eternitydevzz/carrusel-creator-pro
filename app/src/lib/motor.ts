@@ -120,6 +120,10 @@ export async function leerEstado(archivoEstado: string) {
 }
 export async function leerTexto(ruta: string) { try { return await fs.readFile(ruta, "utf8"); } catch { return ""; } }
 export async function existe(ruta: string) { try { await fs.access(ruta); return true; } catch { return false; } }
+/** El cuerpo JSON de una petición; si viene roto o vacío, un objeto vacío (cada ruta valida sus campos y responde 400). */
+export async function cuerpoJson<T extends object>(req: Request): Promise<Partial<T>> {
+  try { const d = await req.json(); return d && typeof d === "object" && !Array.isArray(d) ? (d as Partial<T>) : {}; } catch { return {}; }
+}
 export function nombreSeguro(nombre: string) { return /^[a-z0-9_\-]+$/i.test(nombre) ? nombre : null; }
 export function limpiarNombre(nombre: string) {
   return nombre.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");

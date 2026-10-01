@@ -15,13 +15,21 @@
 #   carrusel.sh cupo                                imágenes gastadas en 24 h por la cuenta actual
 #
 # Variables opcionales:  ENSAYO=1 (no llama a Codex)   FORZAR=1 (salta el cupo)   RECOGER_SID=<id> (recoge una sesión ya hecha)
+#                        PERFIL=<cliente> (por defecto, el cliente activo en la app)
 set -u
 AQUI="${0:A:h}"
 export PATH="$HOME/.local/bin:/opt/homebrew/bin:/usr/local/bin:$PATH"
 DATOS="${DATOS:-${AQUI:h}/datos}"; export DATOS
-MARCA="$DATOS/marca"; FICHAS="$DATOS/fichas"; VIRALES="$DATOS/virales"; SALIDA="$DATOS/salida"
+# Cliente (perfil): la variable PERFIL o el activo en ajustes.json. Cada cliente tiene su carpeta en perfiles/
+# con su marca, fichas, originales y carruseles. Lo compartido (cupo de Codex, clave, ajustes) queda en DATOS.
+# Sin perfiles (datos de antes de la migración) se usa la propia carpeta de datos.
+PERFIL="${PERFIL:-$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('perfil_activo',''))" "$DATOS/ajustes.json" 2>/dev/null)}"
+if [[ -n "$PERFIL" && ! "$PERFIL" =~ '^[a-z0-9_-]+$' ]]; then echo "Nombre de cliente no válido: $PERFIL"; exit 64; fi
+if [ -n "$PERFIL" ] && [ -d "$DATOS/perfiles/$PERFIL" ]; then DATOS_PERFIL="$DATOS/perfiles/$PERFIL"; else DATOS_PERFIL="$DATOS"; fi
+export PERFIL DATOS_PERFIL
+MARCA="$DATOS_PERFIL/marca"; FICHAS="$DATOS_PERFIL/fichas"; VIRALES="$DATOS_PERFIL/virales"; SALIDA="$DATOS_PERFIL/salida"
 GEN="${GEN:-$HOME/.codex/generated_images}"
-CUPO="$DATOS/CUPO.csv"; ESTADO="$DATOS/ESTADO.md"
+CUPO="$DATOS/CUPO.csv"; ESTADO="$DATOS_PERFIL/ESTADO.md"
 CUENTA="$(head -1 "$DATOS/CUENTA_ACTUAL.txt" 2>/dev/null)"; CUENTA="${CUENTA:-sin_nombre}"
 # clave de ScrapeCreators: variable de entorno o datos/ajustes.json
 [ -z "${SCRAPECREATORS_API_KEY:-}" ] && [ -f "$DATOS/ajustes.json" ] && export SCRAPECREATORS_API_KEY="$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('scrapecreators_key',''))" "$DATOS/ajustes.json" 2>/dev/null)"
@@ -153,7 +161,7 @@ PY
   echo "OK ficha_ia $nombre (Claude Code)"
 }
 
-cmd_comprobar() { python3 "$AQUI/ficha.py" comprobar "$(ficha_de "$1")"; }
+cmd_comprobar() { [ -f "$(ficha_de "$1")" ] || { echo "No existe la ficha \"$1\" en el cliente ${PERFIL:-actual}"; exit 1; }; python3 "$AQUI/ficha.py" comprobar "$(ficha_de "$1")"; }
 
 cmd_hojas() {  # <carpeta_viral> <destino>: hojas de 6 slides del original
   local V="$1" O="$2"; mkdir -p "$O"; local N=$(ls "$V" | grep -c -E '^slide_[0-9]+\.jpg$') H=0 INI=1
@@ -167,6 +175,8 @@ cmd_generar() {  # <nombre>
   local nombre="$1" F="$(ficha_de "$1")"; [ -f "$F" ] || { echo "No existe la ficha $F"; exit 1; }
   python3 "$AQUI/ficha.py" comprobar "$F" || exit 1
   local N=$(cab "$nombre" slides) V=$(cab "$nombre" viral) OUT="$SALIDA/$nombre"
+  # la ficha guarda la ruta del original; si ya no existe (datos movidos), se busca en la carpeta del cliente
+  [ -n "$V" ] && [ ! -d "$V" ] && [ -d "$VIRALES/${V:t}" ] && V="$VIRALES/${V:t}"
   mkdir -p "$OUT/_logs" "$OUT/_sin_pie" "$OUT/_viral"
   local H=0
   if [ -d "$V" ]; then H=$(cmd_hojas "$V" "$OUT/_viral") || { echo "FALLO al hacer las hojas del viral"; exit 1; }; fi
@@ -238,7 +248,14 @@ cmd_cerrar() {  # <nombre>: solo tras el ok del usuario. Usa la skill adaptar-pa
   # fuera todo lo que no es un slide, para que la skill solo toque los N PNG
   rm -rf "$OUT"/_sin_pie "$OUT"/_versiones "$OUT"/_viral "$OUT"/_logs "$OUT"/_correcciones "$OUT"/_revisar "$OUT"/_hoja.jpg "$OUT"/_pies.jpg "$OUT"/_prompt.txt "$OUT"/.DS_Store
   local AVISO=""
-  local UBI=(); [ -f "$DATOS/ajustes.json" ] && UBI=("${(@f)$(python3 -c "import json,sys;a=json.load(open(sys.argv[1]));u=a.get('ubicacion') or {};print('\n'.join(['--ciudad',u.get('ciudad','Newark'),'--estado',u.get('estado','New Jersey'),'--pais',u.get('pais','United States'),'--codigo',u.get('codigo','US'),'--lat',str(u.get('lat',40.7357)),'--lon',str(u.get('lon',-74.1724))]))" "$DATOS/ajustes.json")}")
+  # ubicación de los metadatos: la del cliente (perfil.json); si no tiene, la de ajustes.json; si no, Newark
+  local UBI=("${(@f)$(python3 -c "import json,sys,os
+u={}
+for p in sys.argv[1:]:
+  if os.path.isfile(p):
+    u=json.load(open(p)).get('ubicacion') or {}
+    if u: break
+print('\\n'.join(['--ciudad',u.get('ciudad','Newark'),'--estado',u.get('estado','New Jersey'),'--pais',u.get('pais','United States'),'--codigo',u.get('codigo','US'),'--lat',str(u.get('lat',40.7357)),'--lon',str(u.get('lon',-74.1724))]))" "$DATOS_PERFIL/perfil.json" "$DATOS/ajustes.json")}")
   bash "$ADAPTAR" "$OUT" "${UBI[@]}" || AVISO="ATENCIÓN: la skill avisó de rastros en algún JPG. Comprobar con: grep -aioE 'c2pa|openai|sora' <archivo>. Un 'sORA' suelto dentro de los bytes de la imagen es casualidad: se recodifica ese JPG con calidad 91 y se vuelve a limpiar."
   for n in $(seq 1 $N); do [ -f "$OUT/$n.jpg" ] || { echo "Falta $OUT/$n.jpg tras adaptar"; exit 1; }; done
   [ -z "$AVISO" ] && rm -rf "${OUT}_originales"   # los PNG con C2PA no se guardan; si hubo aviso, se dejan hasta revisar

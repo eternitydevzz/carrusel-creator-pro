@@ -9,7 +9,8 @@ Uso:
 import os, re, sys
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
-DATOS = os.environ.get("DATOS") or os.path.join(os.path.dirname(AQUI), "datos")
+# carpeta del cliente activo (la exporta carrusel.sh); sin perfiles, la carpeta de datos
+DATOS = os.environ.get("DATOS_PERFIL") or os.environ.get("DATOS") or os.path.join(os.path.dirname(AQUI), "datos")
 MARCA = os.path.join(DATOS, "marca", "marca.txt")
 BASE = os.path.join(AQUI, "PROMPT_BASE.txt")
 BASE_CLARO = os.path.join(AQUI, "PROMPT_BASE_CLARO.txt")  # cabecera 'estilo: claro': fondo claro como el original
@@ -106,6 +107,9 @@ def comprobar(path):
     # cifras: todas tienen que existir en el carrusel original
     viral = cab.get("viral", "")
     fuente = ""
+    # datos movidos (p. ej. al pasar a perfiles): si la ruta guardada ya no existe, el original está en la carpeta del cliente
+    if viral and not os.path.isdir(viral) and os.path.isdir(os.path.join(DATOS, "virales", os.path.basename(viral.rstrip("/")))):
+        viral = os.path.join(DATOS, "virales", os.path.basename(viral.rstrip("/")))
     if viral.strip().lower() in ("ninguno", "ninguna", "no", ""):
         fuente = None  # guion propio: no hay original con el que comparar cifras
     elif os.path.isdir(viral):

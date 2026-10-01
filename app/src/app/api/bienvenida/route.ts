@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs, existsSync } from "node:fs";
 import path from "node:path";
-import { cliente, datos, escribirAjustes, leerAjustes, leerMarca, perfilActivo } from "@/lib/motor";
+import { cliente, cuerpoJson, datos, escribirAjustes, leerAjustes, leerMarca, perfilActivo } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,8 @@ export async function GET() {
 
 /** { hecha: true, modo } al terminar: marca al cliente como configurado y, si era la primera vez, al equipo. */
 export async function POST(req: Request) {
-  const { hecha, modo } = (await req.json()) as { hecha?: boolean; modo?: string };
+  const { hecha, modo } = (await cuerpoJson<{ hecha: boolean; modo: string }>(req));
+  if (typeof hecha !== "boolean") return NextResponse.json({ error: "Falta hecha (true o false)" }, { status: 400 });
   const f = path.join(cliente(), "perfil.json");
   await fs.writeFile(f, JSON.stringify({ ...(await leerPerfil()), bienvenida_hecha: hecha === true }, null, 2));
   if (hecha === true && modo === "inicial") await escribirAjustes({ ...(await leerAjustes()), equipo_configurado: true });

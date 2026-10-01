@@ -3,7 +3,8 @@
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
 
-/** Si la marca está sin configurar, lleva a la bienvenida. Se comprueba al abrir la app y al cambiar de pantalla. */
+/** La primera vez del equipo (nada configurado) lleva a la bienvenida. A un cliente con la marca a medias no se le encierra:
+ *  el selector lo marca como "Marca sin completar" y desde ahí se termina. Se comprueba al abrir la app y al cambiar de pantalla. */
 export function GuardiaBienvenida() {
   const ruta = usePathname();
   const router = useRouter();
@@ -12,7 +13,7 @@ export function GuardiaBienvenida() {
     let vivo = true;
     fetch("/api/bienvenida", { cache: "no-store" })
       .then((r) => r.json())
-      .then((d: { hecha: boolean }) => { if (vivo && !d.hecha) router.replace("/bienvenida"); })
+      .then((d: { hecha: boolean; modo: string }) => { if (vivo && !d.hecha && d.modo === "inicial") router.replace("/bienvenida"); })
       .catch(() => { /* sin respuesta: la app sigue normal */ });
     return () => { vivo = false; };
   }, [ruta, router]);

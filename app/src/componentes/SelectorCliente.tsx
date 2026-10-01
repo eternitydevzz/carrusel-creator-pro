@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
 
-type Perfil = { id: string; nombre: string; handle: string; azul: string; foto: string; carruseles: number; activo: boolean };
+type Perfil = { id: string; nombre: string; handle: string; azul: string; foto: string; carruseles: number; activo: boolean; completo: boolean };
 
 /** Recarga la app en Inicio: todas las pantallas vuelven a pedir sus datos ya con el cliente nuevo. */
 function irAInicio(ruta = "/") { window.location.assign(new URL(ruta, window.location.origin).href); }
@@ -19,7 +20,7 @@ function Avatar({ p, tam = 34 }: { p: Perfil; tam?: number }) {
 }
 
 /** Selector del cliente activo, en la barra lateral. Cada cliente tiene su marca y su biblioteca. */
-export function SelectorCliente() {
+export function SelectorCliente({ compacto = false }: { compacto?: boolean }) {
   const [perfiles, setPerfiles] = useState<Perfil[]>([]);
   const [abierto, setAbierto] = useState(false);
   const [ocupado, setOcupado] = useState(false);
@@ -53,16 +54,19 @@ export function SelectorCliente() {
 
   if (!activo) return null;
   return (
-    <div ref={caja} className="relative mb-5">
+    <div ref={caja} className={`relative ${compacto ? "" : "mb-5"}`}>
       <button type="button" className="vidrio-suave flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition-colors hover:bg-white/5" style={{ borderColor: "var(--border)" }}
         onClick={() => setAbierto((a) => !a)} aria-haspopup="listbox" aria-expanded={abierto} disabled={ocupado}>
         <Avatar p={activo} />
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-[14px] font-semibold">{activo.nombre}</span>
-          <span className="block truncate text-[12px]" style={{ color: "var(--fg-muted)" }}>{activo.handle || "Sin cuenta"}</span>
+          <span className="block truncate text-[12px]" style={{ color: activo.completo ? "var(--fg-muted)" : "var(--warn, #fbbf24)" }}>{activo.completo ? activo.handle : "Marca sin completar"}</span>
         </span>
         <ChevronsUpDown size={16} style={{ color: "var(--fg-muted)" }} />
       </button>
+      {!activo.completo && !abierto && (
+        <Link href="/bienvenida" className="mt-2 block rounded-xl px-3 py-2 text-[12.5px] font-semibold transition-colors hover:bg-white/5" style={{ color: "var(--accent)" }}>Completar su marca →</Link>
+      )}
       {abierto && (
         <div className="modal absolute left-0 right-0 top-full z-40 mt-2 p-2" role="listbox" aria-label="Clientes">
           <p className="px-2 pb-1 pt-1 text-[11px] font-semibold uppercase tracking-wider" style={{ color: "var(--fg-faint)" }}>Clientes</p>
@@ -73,7 +77,7 @@ export function SelectorCliente() {
               <Avatar p={p} tam={28} />
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate text-[13.5px] font-semibold">{p.nombre}</span>
-                <span className="block truncate text-[11.5px]" style={{ color: "var(--fg-muted)" }}>{p.carruseles} {p.carruseles === 1 ? "carrusel" : "carruseles"}</span>
+                <span className="block truncate text-[11.5px]" style={{ color: p.completo ? "var(--fg-muted)" : "var(--warn, #fbbf24)" }}>{p.completo ? `${p.carruseles} ${p.carruseles === 1 ? "carrusel" : "carruseles"}` : "Marca sin completar"}</span>
               </span>
               {p.activo && <Check size={16} style={{ color: "var(--accent)" }} />}
             </button>

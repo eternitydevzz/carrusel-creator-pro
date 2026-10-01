@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Volume2, VolumeX } from "lucide-react";
+import { ArrowLeft, Volume2, VolumeX, X } from "lucide-react";
 import { Sfx, iniciarSonidos } from "@/lib/sonidos";
 
 /* Primer arranque: deja la marca y las conexiones configuradas en 4 bloques.
@@ -187,6 +187,12 @@ export function Bienvenida() {
     Sfx.advance();
     setPaso(paso + 1);
   }
+  /** Salir sin terminar (solo con clientes): un cliente nuevo vacío va a la papelera y se vuelve al cliente de antes. */
+  async function cancelar() {
+    Sfx.click();
+    await fetch("/api/perfiles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "cancelar" }) }).catch(() => {});
+    window.location.assign(new URL("/", window.location.origin).href);
+  }
   function atras() { if (paso > 0) { Sfx.click(); setError(""); setPaso(paso - 1); } }
 
   function elegir(fn: (v: string) => void, v: string) {
@@ -207,6 +213,7 @@ export function Bienvenida() {
       if (tipo === "personaje") setFotos((m.fotos ?? "").split(",").map((f) => f.trim()).filter(Boolean));
       else setEstilo(m.tipografia ?? "");
       Sfx.select();
+      if (d.fallidos?.length) setError(`No se pudo leer como imagen: ${d.fallidos.join(", ")}. Las demás se guardaron.`);
     } catch (e) { setError((e as Error).message); } finally { setSubiendo(false); }
   }
 
@@ -335,6 +342,9 @@ export function Bienvenida() {
   return (
     <div className="cmb">
       <div className="cm-pop__card" key={paso < 0 ? "portada" : paso >= PASOS.length ? `fin${paso}` : "quiz"}>
+        {esCliente && paso === -1 && (
+          <button type="button" className="cm-icon-btn" style={{ position: "absolute", top: 12, right: 12 }} onClick={() => void cancelar()} aria-label="Cancelar y volver" title="Cancelar y volver"><X size={20} /></button>
+        )}
         {paso === -1 && (
           <div>
             <div className="cm-logo">
@@ -359,6 +369,7 @@ export function Bienvenida() {
             <div className="cm-quiz__top">
               <div className="cm-quiz__segs" aria-hidden="true">{segmentos.map((w, i) => <div key={i} className="cm-seg"><i style={{ width: `${w}%` }} /></div>)}</div>
               <button type="button" className="cm-icon-btn" onClick={() => setMudo(Sfx.alternar())} aria-label={mudo ? "Activar sonido" : "Silenciar"}>{mudo ? <VolumeX size={19} /> : <Volume2 size={19} />}</button>
+              {esCliente && <button type="button" className="cm-icon-btn" onClick={() => void cancelar()} aria-label="Cancelar y volver" title="Cancelar y volver"><X size={20} /></button>}
             </div>
             <div className="cm-q" key={idPaso}>
               <div className="cm-q__meta"><span className="cm-q__blk">Bloque {PASOS[paso].b + 1} · <b>{BLOQUES[PASOS[paso].b]}</b></span><span className="cm-q__count">{paso + 1} / {PASOS.length}</span></div>

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Check, FolderOpen, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Check, FolderOpen, Loader2, Sparkles } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
 
 type Ajustes = { clave_puesta: boolean; clave_final: string; creditos: number | null; creditos_error?: string; cuenta: string; ubicacion: Record<string, string | number>; codex: string; codex_ok: boolean; claude: string; claude_ok: boolean; cupo: string; herramientas: Record<string, boolean>; datos: string; datos_por_defecto: string };
@@ -38,7 +39,7 @@ export default function AjustesPagina() {
   if (!a) return <Panel><p style={{ color: "var(--fg-muted)" }}>Cargando…</p></Panel>;
   return (
     <div className="flex flex-col gap-6">
-      <Cabecera titulo="Ajustes" texto="Lo que conecta la app con Codex, Claude Code, ScrapeCreators y tu carpeta de trabajo." />
+      <Cabecera titulo="Ajustes" texto="Lo que conecta la app con Codex, Claude Code, ScrapeCreators y tu carpeta de trabajo." derecha={<Link className="boton" href="/bienvenida"><Sparkles size={16} /> Repetir bienvenida</Link>} />
       {aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}
 
       <Panel fuerte className="aparece">

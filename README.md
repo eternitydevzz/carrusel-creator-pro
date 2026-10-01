@@ -35,11 +35,11 @@ El instalador pone Node, ffmpeg y exiftool con Homebrew, instala Codex CLI si no
 ./arrancar.sh
 ```
 
-Abre `http://localhost:3000`. La primera vez:
+Abre `http://localhost:3000`. La primera vez sale la **bienvenida**: un formulario de 11 pasos (unos 3 minutos) que deja todo configurado: tu nombre, tu @, el color, a quién le hablas, el lema del pie, tus fotos, la referencia de estilo, la ropa, la clave de ScrapeCreators, la comprobación de Codex y Claude Code, y la ubicación de los metadatos. Se repite desde **Ajustes → Repetir bienvenida**, y todo se puede cambiar después en **Branding** y **Ajustes**.
 
-1. **Ajustes:** conecta Codex (`codex login` en la Terminal si no lo está), pega tu clave de ScrapeCreators y ponle un nombre a tu cuenta.
-2. **Branding:** sube 2 o 3 fotos del personaje, una referencia de estilo, tu @, el lema del pie, tu color, tu ángulo de comunicación y la ropa del personaje. Sin fotos no se puede generar.
-3. **Inicio:** pega un link de Instagram o tu guion.
+Si Codex no está conectado, la bienvenida te da la orden exacta para la Terminal (`codex login`).
+
+Para probar con otra marca sin tocar la tuya, arranca con otra carpeta de datos: `CCP_DATOS=/ruta/a/otra/carpeta ./arrancar.sh`.
 
 ## Cómo funciona
 

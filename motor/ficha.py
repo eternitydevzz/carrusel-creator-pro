@@ -12,6 +12,8 @@ AQUI = os.path.dirname(os.path.abspath(__file__))
 DATOS = os.environ.get("DATOS") or os.path.join(os.path.dirname(AQUI), "datos")
 MARCA = os.path.join(DATOS, "marca", "marca.txt")
 BASE = os.path.join(AQUI, "PROMPT_BASE.txt")
+BASE_CLARO = os.path.join(AQUI, "PROMPT_BASE_CLARO.txt")  # cabecera 'estilo: claro': fondo claro como el original
+ESTILO = {"claro": False, "mascotas": False, "mascotas_cara": False}  # lo rellena prompt() con la cabecera de la ficha
 REGLAS = os.path.join(AQUI, "REGLAS.md")
 
 OBLIGATORIAS = []  # por slide hace falta 'titular' o 'texto'; el resto es opcional
@@ -19,7 +21,7 @@ OBLIGATORIAS = []  # por slide hace falta 'titular' o 'texto'; el resto es opcio
 MANOS = ["señala con el índice el elemento principal", "presenta el elemento principal con la mano abierta",
          "brazos cruzados", "mano en la barbilla", "sostiene el elemento principal en la palma",
          "señala a cámara con el índice", "las dos manos apoyadas en la mesa", "mano en el bolsillo de la americana"]
-# La ropa es siempre la de marca.txt; la casilla 'ropa' de la ficha solo se usa si Cristian quiere una excepción.
+# La ropa es siempre la de marca.txt; la casilla 'ropa' de la ficha solo se usa si el usuario quiere una excepción.
 
 
 def leer_marca():
@@ -121,7 +123,7 @@ def comprobar(path):
     else:
         fallos.append(f"No existe la carpeta del viral: {viral}")
     if fuente:
-        # cifras que Cristian ya dio por buenas aunque el original las escriba de otra forma (p. ej. 1.3B → 1.300 millones)
+        # cifras que el usuario ya dio por buenas aunque el original las escriba de otra forma (p. ej. 1.3B → 1.300 millones)
         conf = cab.get("cifras_confirmadas", "")
         cifras_fuente = numeros(fuente) | numeros(conf)
         if conf.strip().lower().startswith("todas"):
@@ -154,10 +156,14 @@ def render_slide(k, s, n):
         lineas = s["titular"].split(" / ")
         t = f"Titular, en {len(lineas)} línea{'s' if len(lineas) > 1 else ''}: {' / '.join(lineas)}."
         if s.get("azul"):
-            t += f" En azul: \"{s['azul'].strip(chr(34))}\". El resto en blanco."
+            t += f" En azul: \"{s['azul'].strip(chr(34))}\". El resto en {'negro' if ESTILO['claro'] else 'blanco'}."
         out.append(t)
         if s.get("debajo"):
             out.append(f"Debajo, en letra más pequeña: {s['debajo']}")
+        if s.get("subrayado"):
+            out.append(f"Subrayado a mano: un trazo de rotulador azul, irregular, debajo de \"{s['subrayado'].strip(chr(34))}\". Ningún otro subrayado en el titular.")
+        if s.get("caja"):
+            out.append(f"Caja de color: detrás de \"{s['caja'].strip(chr(34))}\" va una mancha de rotulador en el azul de la marca, con bordes irregulares, y la palabra encima en BLANCO (nunca en negro). Ninguna otra caja.")
     else:
         out.append("Texto del slide (el titular, de 5 a 10 palabras, sale de la idea central de este texto; el resto va como texto secundario, más pequeño; las cifras se escriben tal cual):")
         out.append(s["texto"])
@@ -167,12 +173,20 @@ def render_slide(k, s, n):
         out.append(f"Idea del original: {s['idea']}")
     te = s.get("texto_escena", "").strip()
     if te and te.lower() not in ("ninguno", "ninguna", "no", "-"):
-        out.append(f"El único texto que aparece dentro de la escena es este: {te}. Nada más: ni pestañas, ni fechas, ni cifras, ni logos.")
+        cierre = ("Nada más: ni pestañas, ni fechas, ni otras cifras; y ningún logo salvo los de las herramientas que nombra el guion."
+                  if ESTILO["claro"] else "Nada más: ni pestañas, ni fechas, ni cifras, ni logos.")
+        out.append(f"El único texto que aparece dentro de la escena es este: {te}. {cierre}")
     else:
         out.append("Dentro de la escena solo puede aparecer texto que esté en el guion (por ejemplo, los datos en tarjetas o cajas). Ningún otro rótulo, pantalla con letras ni logo.")
-    # personaje: no → el slide va sin Cristian (portadas con mascota u objeto, slides de "guarda este post"…)
+    # personaje: no → el slide va sin el personaje (portadas con mascota u objeto, slides de "guarda este post"…)
     if sin_personaje(s):
-        out.append("SIN PERSONAJE en este slide: aquí no aparece ninguna persona. La escena ocupa todo el encuadre, como en el slide original. La mascota o la persona del original tampoco aparecen.")
+        if ESTILO["mascotas"]:  # cabecera 'mascotas: si': los muñecos del original son la idea del carrusel y se quedan
+            if ESTILO.get("mascotas_cara"):
+                out.append("SIN PERSONAJE en este slide: el personaje de las fotos no aparece como persona. Los muñecos de píxel del original SÍ aparecen, como en el slide original (son los agentes de AI), y cada muñeco lleva la cara del personaje de las fotos 1, 2 y 3, reconocible, sobre su cuerpo de vóxel, con su gorro o accesorio del original.")
+            else:
+                out.append("SIN PERSONAJE en este slide: el personaje de las fotos no aparece. Los muñecos de píxel del original SÍ aparecen, como en el slide original: son los agentes de AI.")
+        else:
+            out.append("SIN PERSONAJE en este slide: aquí no aparece ninguna persona. La escena ocupa todo el encuadre, como en el slide original. La mascota o la persona del original tampoco aparecen.")
         return "\n".join(out)
     ropa = s.get("ropa") or leer_marca().get("ropa", "").split(".")[0]
     manos = s.get("manos") or MANOS[(k - 1) % len(MANOS)]
@@ -201,7 +215,10 @@ def prompt(path, salida, hojas):
     elif h > 1:
         img.append(f"{len(fotos)+2} a {len(fotos)+1+h}: los slides del carrusel original, 6 por hoja, de izquierda a derecha y de arriba abajo.")
     img.append(f"{len(fotos)+2+h}: guía de zonas. Muestra el contador y el pie que pondremos nosotros encima de cada slide. Sus dos zonas quedan libres en tu imagen.")
-    base = open(BASE, encoding="utf-8").read()
+    ESTILO["claro"] = cab.get("estilo", "").strip().lower() == "claro"
+    ESTILO["mascotas"] = cab.get("mascotas", "").strip().lower() in ("si", "sí", "cara")
+    ESTILO["mascotas_cara"] = cab.get("mascotas", "").strip().lower() == "cara"  # los muñecos llevan la cara del personaje
+    base = open(BASE_CLARO if ESTILO["claro"] else BASE, encoding="utf-8").read()
     if h == 0:  # sin carrusel original: fuera la línea que habla de él
         base = "\n".join(l for l in base.split("\n") if not l.startswith("- Carrusel original:"))
     texto = (base.replace("{IMAGENES}", "\n".join(img))
@@ -224,6 +241,93 @@ def nueva(nombre, n, viral):
     print(f"Ficha creada: {path}")
 
 
+def prompt_descripcion(path, salida):
+    """Monta el prompt de la descripción de Instagram a partir de la ficha y marca.txt."""
+    cab, _ = leer_ficha(path)
+    m = leer_marca()
+    plantilla = open(os.path.join(AQUI, "PROMPT_DESCRIPCION.txt"), encoding="utf-8").read()
+    texto = (plantilla.replace("{HANDLE}", m.get("handle", ""))
+                      .replace("{ANGULO}", m.get("angulo", ""))
+                      .replace("{IDIOMA}", m.get("idioma", "español"))
+                      .replace("{CTA}", cab.get("cta", "").strip() or "la palabra clave")
+                      .replace("{FICHA}", open(path, encoding="utf-8").read()))
+    open(salida, "w", encoding="utf-8").write(texto)
+
+
+def fallos_descripcion(t, ficha):
+    """Lo que tiene mal un texto de descripción: hashtags que no son 5, "IA", más de 2.200 caracteres
+    (el máximo de Instagram) o una cifra que no está en la ficha."""
+    fallos = []
+    tags = re.findall(r"#\w+", t)
+    if len(tags) != 5:
+        fallos.append(f"tiene {len(tags)} hashtags y tienen que ser 5: {' '.join(tags)}")
+    if re.search(r"\bIA\b", t):
+        fallos.append('dice "IA"; se dice "AI"')
+    if len(t) > 2200:
+        fallos.append(f"tiene {len(t)} caracteres; Instagram admite 2.200")
+    cifras_ficha = numeros(ficha)
+    for num in sorted(numeros(re.sub(r"#\w+", "", t))):
+        if len(num) >= 2 and num not in cifras_ficha:
+            fallos.append(f"la cifra {num} no está en la ficha")
+    return fallos
+
+
+def comprobar_descripcion(path_ficha, path_desc):
+    t = open(path_desc, encoding="utf-8").read().strip()
+    fallos = fallos_descripcion(t, open(path_ficha, encoding="utf-8").read())
+    if fallos:
+        print("DESCRIPCIÓN RECHAZADA: " + "; ".join(fallos))
+        sys.exit(1)
+    print(f"Descripción correcta: {len(t)} caracteres · hashtags: {' '.join(re.findall(r'#\w+', t))}")
+
+
+MARCA_VARIACION = re.compile(r"^=== VARIACI[ÓO]N (\d+) ===\s*$", re.M)
+
+
+def partir_variaciones(texto):
+    """Trocea el texto por las líneas '=== VARIACIÓN N ==='. Devuelve la lista de variaciones en orden."""
+    partes = MARCA_VARIACION.split(texto)
+    # partes = [antes, n1, texto1, n2, texto2, ...]
+    return [partes[i + 1].strip() for i in range(1, len(partes) - 1, 2)]
+
+
+def prompt_variaciones(path_ficha, path_desc, salida):
+    cab, _ = leer_ficha(path_ficha)
+    m = leer_marca()
+    plantilla = open(os.path.join(AQUI, "PROMPT_VARIACIONES.txt"), encoding="utf-8").read()
+    texto = (plantilla.replace("{HANDLE}", m.get("handle", ""))
+                      .replace("{ANGULO}", m.get("angulo", ""))
+                      .replace("{IDIOMA}", m.get("idioma", "español"))
+                      .replace("{CTA}", cab.get("cta", "").strip() or "la palabra clave")
+                      .replace("{FICHA}", open(path_ficha, encoding="utf-8").read())
+                      .replace("{DESCRIPCION}", open(path_desc, encoding="utf-8").read().strip()))
+    open(salida, "w", encoding="utf-8").write(texto)
+
+
+def comprobar_variaciones(path_ficha, path_var):
+    """Para si no son exactamente 5, si alguna falla el filtro de la descripción,
+    o si dos repiten la primera línea o la misma combinación de hashtags."""
+    ficha = open(path_ficha, encoding="utf-8").read()
+    vs = partir_variaciones(open(path_var, encoding="utf-8").read())
+    fallos = []
+    if len(vs) != 5:
+        fallos.append(f"hay {len(vs)} variaciones y tienen que ser 5")
+    for i, v in enumerate(vs, 1):
+        fallos += [f"variación {i}: {f}" for f in fallos_descripcion(v, ficha)]
+    primeras = [v.split("\n", 1)[0].strip().lower() for v in vs]
+    tags = [frozenset(t.lower() for t in re.findall(r"#\w+", v)) for v in vs]
+    for i in range(len(vs)):
+        for j in range(i + 1, len(vs)):
+            if primeras[i] == primeras[j]:
+                fallos.append(f"las variaciones {i+1} y {j+1} empiezan igual")
+            if tags[i] == tags[j]:
+                fallos.append(f"las variaciones {i+1} y {j+1} llevan los mismos hashtags")
+    if fallos:
+        print("VARIACIONES RECHAZADAS: " + "; ".join(fallos))
+        sys.exit(1)
+    print(f"Variaciones correctas: {len(vs)} · caracteres: {', '.join(str(len(v)) for v in vs)}")
+
+
 if __name__ == "__main__":
     a = sys.argv[1:]
     if not a:
@@ -232,6 +336,17 @@ if __name__ == "__main__":
         comprobar(a[1])
     elif a[0] == "prompt" and len(a) == 4:
         prompt(a[1], a[2], a[3])
+    elif a[0] == "prompt_descripcion" and len(a) == 3:
+        prompt_descripcion(a[1], a[2])
+    elif a[0] == "comprobar_descripcion" and len(a) == 3:
+        comprobar_descripcion(a[1], a[2])
+    elif a[0] == "prompt_variaciones" and len(a) == 4:
+        prompt_variaciones(a[1], a[2], a[3])
+    elif a[0] == "comprobar_variaciones" and len(a) == 3:
+        comprobar_variaciones(a[1], a[2])
+    elif a[0] == "campo" and len(a) == 4:  # campo <ficha> <n> <casilla>: el valor de una casilla de un slide (vacío si no está)
+        _, sl = leer_ficha(a[1])
+        print(sl.get(int(a[2]), {}).get(a[3], "").strip().strip('"'))
     elif a[0] == "nueva" and len(a) == 4:
         nueva(a[1], a[2], a[3])
     else:

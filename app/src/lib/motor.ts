@@ -127,12 +127,14 @@ export function parsearFicha(texto: string): Ficha {
   return { cabecera: cab, slides };
 }
 export function serializarFicha(f: Ficha): string {
-  const ordenCab = ["carrusel", "slides", "cta", "viral", "bandera", "cifras_confirmadas"];
-  const ordenSlide = ["arriba", "titular", "azul", "texto", "debajo", "cta_grande", "idea", "texto_escena", "personaje", "manos", "ropa", "expresion"];
+  const ordenCab = ["carrusel", "slides", "cta", "viral", "bandera", "estilo", "mascotas", "cifras_confirmadas"];
+  const ordenSlide = ["arriba", "titular", "azul", "subrayado", "caja", "texto", "debajo", "cta_grande", "idea", "texto_escena", "personaje", "manos", "ropa", "expresion", "siguiente"];
+  // las casillas que no están en la lista se guardan al final, en su orden: si no, se perdían al guardar desde la app
+  const conOrden = (o: Record<string, string>, orden: string[]) => [...orden, ...Object.keys(o).filter((k) => !orden.includes(k))];
   const out: string[] = [];
   const cab: Record<string, string> = { ...f.cabecera, slides: String(f.slides.length) };
-  for (const k of ordenCab) if (cab[k] !== undefined && cab[k] !== "") out.push(`${k}: ${cab[k]}`);
-  f.slides.forEach((s, i) => { out.push("", `## ${i + 1}`); for (const k of ordenSlide) if (s[k] !== undefined && s[k] !== "") out.push(`${k}: ${s[k]}`); });
+  for (const k of conOrden(cab, ordenCab)) if (cab[k] !== undefined && cab[k] !== "") out.push(`${k}: ${cab[k]}`);
+  f.slides.forEach((s, i) => { out.push("", `## ${i + 1}`); for (const k of conOrden(s, ordenSlide)) if (s[k] !== undefined && s[k] !== "") out.push(`${k}: ${s[k]}`); });
   return out.join("\n") + "\n";
 }
 

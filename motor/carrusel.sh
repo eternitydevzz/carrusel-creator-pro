@@ -9,6 +9,9 @@
 #   carrusel.sh corregir <nombre> <n> "<cambio>"    corrige un slide editándolo y lo vuelve a estampar (1 imagen)
 #   carrusel.sh revisar <nombre>                    hoja del carrusel y tira de pies, para revisar
 #   carrusel.sh cerrar <nombre>                     JPG limpios sin metadatos; borra el material de trabajo y las copias de Codex
+#   carrusel.sh descripcion <nombre>                Claude Code escribe la descripción de Instagram en salida/<nombre>/descripcion.txt
+#   carrusel.sh encoger <nombre> <n> [factor] [y]  encoge la escena (0.92; y = px que baja) para no pisar pie ni contador; 0 imágenes
+#   carrusel.sh variaciones <nombre>                5 variaciones de esa descripción (otro gancho y enfoque) en salida/<nombre>/variaciones.txt
 #   carrusel.sh cupo                                imágenes gastadas en 24 h por la cuenta actual
 #
 # Variables opcionales:  ENSAYO=1 (no llama a Codex)   FORZAR=1 (salta el cupo)   RECOGER_SID=<id> (recoge una sesión ya hecha)
@@ -25,6 +28,7 @@ CUENTA="$(head -1 "$DATOS/CUENTA_ACTUAL.txt" 2>/dev/null)"; CUENTA="${CUENTA:-si
 dato() { grep -m1 "^$1:" "$MARCA/marca.txt" | cut -d: -f2- | sed 's/^ *//'; }
 TOPE="$(dato tope_imagenes_dia)"; TOPE="${TOPE:-60}"
 export PIE_HANDLE="$(dato handle)"
+export PIE_LEMA="$(dato lema)"
 MODELO="gpt-5.5"; ESFUERZO="medium"
 
 # ---------- utilidades ----------
@@ -36,13 +40,17 @@ ajustar_4x5() {  # <origen> <destino>: deja la imagen en 4:5 recortando, nunca e
   sips -c $nh $nw "$src" --out "$dst" >/dev/null && sips -z 1350 1080 "$dst" >/dev/null
 }
 capa() {  # <n> <N> → ruta de la capa transparente con contador y pie
-  local f="$DATOS/capas/capa_${1}de${2}_${PIE_HANDLE//[@.]/}.png"
+  # el adelanto del pie (casilla 'siguiente' del slide) cambia por carrusel: va en el nombre de la capa (huella corta)
+  export PIE_SIGUIENTE=""; [ -n "${PIE_FICHA:-}" ] && PIE_SIGUIENTE="$(python3 "$AQUI/ficha.py" campo "$PIE_FICHA" "$1" siguiente)"
+  local huella=$(printf '%s|%s' "$PIE_LEMA" "$PIE_SIGUIENTE" | md5 | cut -c1-8)
+  local f="$DATOS/capas/capa_${1}de${2}_${PIE_HANDLE//[@.]/}${PIE_ESTILO:+_$PIE_ESTILO}_$huella.png"
   mkdir -p "$DATOS/capas"
   [ -f "$f" ] || swift "$AQUI/plantilla/plantilla.swift" "$1" "$2" "$f" >/dev/null || { echo "FALLO al dibujar la capa $1"; exit 1; }
   echo "$f"
 }
 guia_zonas() {  # <N> → imagen con fondo que enseña dónde van el contador y el pie (referencia para Codex)
-  local f="$DATOS/capas/guia_zonas_${1}_${PIE_HANDLE//[@.]/}.png"
+  export PIE_SIGUIENTE="SIGUIENTE: / ADELANTO DEL SLIDE"  # en la guía solo enseña cuánto ocupa el pie
+  local f="$DATOS/capas/guia_zonas_${1}_${PIE_HANDLE//[@.]/}${PIE_ESTILO:+_$PIE_ESTILO}_pie2.png"
   mkdir -p "$DATOS/capas"
   [ -f "$f" ] || swift "$AQUI/plantilla/plantilla.swift" 1 "$1" "$f" fondo >/dev/null || { echo "FALLO al dibujar la guía de zonas"; exit 1; }
   echo "$f"
@@ -69,7 +77,7 @@ refs_marca() {  # rutas completas de las fotos de la marca, en orden
 }
 llamar_codex() {  # <carpeta_trabajo> <prompt> <log> <ref>...  → escribe el log; devuelve el código de salida de codex
   local dir="$1" prompt="$2" log="$3"; shift 3
-  local IMGS=(); for f in "$@"; do [ -f "$f" ] || { echo "FALTA_REFERENCIA: $f"; return 5; }; IMGS+=(-i "${f:A}"); done
+  local IMGS=(); for f in "$@"; do [ -f "$f" ] || { echo "FALTA_REFERENCIA: $f · Sube tus fotos y la referencia de estilo en Branding antes de generar."; return 5; }; IMGS+=(-i "${f:A}"); done
   if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Codex. Prompt: $prompt · Referencias:"; printf '  %s\n' "${IMGS[@]}" | grep -v '^  -i$'; return 0; fi
   # El prompt entra por stdin. No se pone "-" al final: -i lo leería como una imagen.
   cat "$prompt" | codex exec --ephemeral --ignore-user-config --skip-git-repo-check -s read-only -C "$dir" \
@@ -222,7 +230,7 @@ cmd_revisar() {  # <nombre>: hoja + tira de pies
   echo "Revisión: $OUT/_hoja.jpg y $OUT/_pies.jpg"
 }
 
-cmd_cerrar() {  # <nombre>: solo tras el ok de Cristian. Usa la skill adaptar-para-subir para dejar los JPG listos.
+cmd_cerrar() {  # <nombre>: solo tras el ok del usuario. Usa la skill adaptar-para-subir para dejar los JPG listos.
   local nombre="$1" OUT="$SALIDA/$1" N=$(cab "$1" slides)
   local ADAPTAR="$AQUI/adaptar.sh"
   for n in $(seq 1 $N); do [ -f "$OUT/$n.png" ] || { echo "Falta $OUT/$n.png"; exit 1; }; done
@@ -244,17 +252,99 @@ cmd_cerrar() {  # <nombre>: solo tras el ok de Cristian. Usa la skill adaptar-pa
   return 0
 }
 
+cmd_descripcion() {  # <nombre>: Claude Code (con la sesión del usuario) escribe la descripción de Instagram. Tokens, no imágenes.
+  local nombre="$1" F="$(ficha_de "$1")" OUT="$SALIDA/$1"
+  [ -f "$F" ] || { echo "No existe la ficha $F"; exit 1; }
+  mkdir -p "$OUT/_logs"
+  local CLAUDE="$(command -v claude || true)"; [ -z "$CLAUDE" ] && [ -x "$HOME/.local/bin/claude" ] && CLAUDE="$HOME/.local/bin/claude"
+  [ -n "$CLAUDE" ] || { echo "Falta Claude Code. Instálalo (npm install -g @anthropic-ai/claude-code) y entra con: claude"; exit 1; }
+  local P="$OUT/_logs/prompt_descripcion.txt"
+  python3 "$AQUI/ficha.py" prompt_descripcion "$F" "$P" || exit 1
+  if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Claude. Prompt: $P"; exit 0; fi
+  local LOG=$(siguiente_log "$OUT" descripcion)
+  # sin herramientas: todo lo que necesita va en el prompt
+  "$CLAUDE" -p --tools "" --output-format text < "$P" > "$LOG" 2>"$LOG.err"; local RC=$?
+  [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
+  python3 - "$LOG" "$OUT/_descripcion_nueva.txt" <<'PY'
+import sys,re
+t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
+t=re.sub(r"```\w*","",t).strip()
+if not t: raise SystemExit("Claude no devolvió texto. Ver "+sys.argv[1])
+open(sys.argv[2],"w",encoding="utf-8").write(t+"\n")
+PY
+  [ $? -eq 0 ] || exit 1
+  # solo se guarda si pasa la comprobación; si no, la anterior (si la hay) se queda como estaba
+  python3 "$AQUI/ficha.py" comprobar_descripcion "$F" "$OUT/_descripcion_nueva.txt" || { echo "Texto rechazado en $OUT/_descripcion_nueva.txt"; exit 1; }
+  mv "$OUT/_descripcion_nueva.txt" "$OUT/descripcion.txt"
+  anotar_cupo "$nombre" descripcion 0 "claude"
+  echo "Descripción escrita en $OUT/descripcion.txt"
+}
+
+cmd_variaciones() {  # <nombre>: 5 variaciones de la descripción, para probar cuál funciona. Tokens, no imágenes.
+  local nombre="$1" F="$(ficha_de "$1")" OUT="$SALIDA/$1"
+  [ -f "$F" ] || { echo "No existe la ficha $F"; exit 1; }
+  [ -f "$OUT/descripcion.txt" ] || { echo "Primero hace falta la descripción: carrusel.sh descripcion $nombre"; exit 1; }
+  mkdir -p "$OUT/_logs"
+  local CLAUDE="$(command -v claude || true)"; [ -z "$CLAUDE" ] && [ -x "$HOME/.local/bin/claude" ] && CLAUDE="$HOME/.local/bin/claude"
+  [ -n "$CLAUDE" ] || { echo "Falta Claude Code. Instálalo (npm install -g @anthropic-ai/claude-code) y entra con: claude"; exit 1; }
+  local P="$OUT/_logs/prompt_variaciones.txt"
+  python3 "$AQUI/ficha.py" prompt_variaciones "$F" "$OUT/descripcion.txt" "$P" || exit 1
+  if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Claude. Prompt: $P"; exit 0; fi
+  local LOG=$(siguiente_log "$OUT" variaciones)
+  "$CLAUDE" -p --tools "" --output-format text < "$P" > "$LOG" 2>"$LOG.err"; local RC=$?
+  [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
+  python3 - "$LOG" "$OUT/_variaciones_nuevas.txt" <<'PY'
+import sys,re
+t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
+t=re.sub(r"```\w*","",t)
+i=t.find("=== VARIACI")
+if i<0: raise SystemExit("Claude no devolvió variaciones. Ver "+sys.argv[1])
+open(sys.argv[2],"w",encoding="utf-8").write(t[i:].strip()+"\n")
+PY
+  [ $? -eq 0 ] || exit 1
+  # solo se guardan si pasan la comprobación; si no, las anteriores (si las hay) se quedan como estaban
+  python3 "$AQUI/ficha.py" comprobar_variaciones "$F" "$OUT/_variaciones_nuevas.txt" || { echo "Texto rechazado en $OUT/_variaciones_nuevas.txt"; exit 1; }
+  mv "$OUT/_variaciones_nuevas.txt" "$OUT/variaciones.txt"
+  anotar_cupo "$nombre" variaciones 0 "claude"
+  echo "Variaciones escritas en $OUT/variaciones.txt"
+}
+
+cmd_encoger() {  # <nombre> <n> [factor] [y]: cuando Codex lleva la escena hasta el pie o el titular choca con el contador. Sin Codex: no gasta imágenes.
+  local nombre="$1" n="$2" f="${3:-0.92}" y="${4:-0}" OUT="$SALIDA/$1"; local N=$(cab "$nombre" slides)
+  [ -f "$OUT/_sin_pie/$n.png" ] || { echo "No existe $OUT/_sin_pie/$n.png"; exit 1; }
+  mkdir -p "$OUT/_versiones"; local k=1; while [ -e "$OUT/_versiones/${n}_v$k.png" ]; do k=$((k+1)); done
+  cp "$OUT/_sin_pie/$n.png" "$OUT/_versiones/${n}_v$k.png"
+  local w=$(python3 -c "print(int(round(1080*$f/2))*2)") h=$(python3 -c "print(int(round(1350*$f/2))*2)")
+  local x=$(( (1080 - w) / 2 ))
+  # color del fondo: la media de las cuatro esquinas de la escena
+  local esq=() xy; for xy in 10:10 1050:10 10:1320 1050:1320; do esq+=$(ffmpeg -loglevel error -i "$OUT/_sin_pie/$n.png" -vf "crop=20:20:$xy,scale=1:1:flags=area" -f rawvideo -pix_fmt rgb24 - | xxd -p); done
+  local col=$(python3 -c "import sys;v=[bytes.fromhex(h) for h in sys.argv[1:]];print(''.join('%02x'%round(sum(c[i] for c in v)/len(v)) for i in range(3)))" "${esq[@]}")
+  # todo en RGB (gbrp): con la mezcla en YUV el azul de la marca se apagaba (#0270FD → #3C72B5, medido 01-10-2026)
+  ffmpeg -y -loglevel error -i "$OUT/_versiones/${n}_v$k.png" -f lavfi -i "color=c=0x${col}:s=1080x1350" -f lavfi -i color=c=black:s=1080x1350 \
+    -filter_complex "[0]format=gbrp,scale=${w}:${h}:flags=lanczos[e];[1]format=gbrp,split[bg][bg2];[bg][e]overlay=${x}:${y}:format=gbrp[im];[2]format=gbrp,drawbox=x=$((x+20)):y=0:w=$((w-40)):h=$((h+y-20)):color=white:t=fill,boxblur=18:1[m];[bg2][im][m]maskedmerge,format=rgb24" \
+    -frames:v 1 "$OUT/_sin_pie/$n.png" || { cp "$OUT/_versiones/${n}_v$k.png" "$OUT/_sin_pie/$n.png"; echo "FALLO al encoger el slide $n"; exit 1; }
+  estampar "$OUT" $n $N && cmd_revisar "$nombre" >/dev/null
+  echo "OK slide $n encogido al $f, bajado ${y} px · fondo #$col · versión anterior en _versiones/${n}_v$k.png"
+}
+
 cmd_cupo() { echo "Cuenta '$CUENTA': $(gastadas_24h) imágenes en las últimas 24 h (tope $TOPE)"; }
 
+# estilo: claro en la ficha → pie en azul marino (plantilla) y PROMPT_BASE_CLARO.txt (ficha.py)
+[ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && [ "$(cab "$2" estilo)" = "claro" ] && export PIE_ESTILO=claro
+[ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && export PIE_FICHA="$(ficha_de "$2")"
+
 case "${1:-}" in
-  bajar)     [ $# -eq 3 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_bajar "$2" "$3" ;;
-  nueva)     [ $# -eq 3 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_nueva "$2" "$3" ;;
-  ficha_ia)  [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_ficha_ia "$2" ;;
-  comprobar) [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_comprobar "$2" ;;
-  generar)   [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_generar "$2" ;;
-  corregir)  [ $# -eq 4 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_corregir "$2" "$3" "$4" ;;
-  revisar)   [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_revisar "$2" ;;
-  cerrar)    [ $# -eq 2 ] || { sed -n '2,12p' "$0"; exit 64; }; cmd_cerrar "$2" ;;
+  bajar)     [ $# -eq 3 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_bajar "$2" "$3" ;;
+  nueva)     [ $# -eq 3 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_nueva "$2" "$3" ;;
+  ficha_ia)  [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_ficha_ia "$2" ;;
+  comprobar) [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_comprobar "$2" ;;
+  generar)   [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_generar "$2" ;;
+  corregir)  [ $# -eq 4 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_corregir "$2" "$3" "$4" ;;
+  revisar)   [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_revisar "$2" ;;
+  cerrar)    [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_cerrar "$2" ;;
+  descripcion) [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_descripcion "$2" ;;
+  encoger)   [ $# -ge 3 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_encoger "$2" "$3" "${4:-0.92}" "${5:-0}" ;;
+  variaciones) [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_variaciones "$2" ;;
   cupo)      cmd_cupo ;;
-  *)         sed -n '2,12p' "$0"; exit 64 ;;
+  *)         sed -n '2,15p' "$0"; exit 64 ;;
 esac

@@ -5,11 +5,15 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, FolderOpen, Loader2, Pencil, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
+import { Descripcion } from "@/componentes/Descripcion";
+import { Visor } from "@/componentes/Visor";
 import type { Ficha, Slide } from "@/lib/motor";
 
 type Datos = {
   nombre: string; fichaTexto: string; ficha: Ficha | null; comprobacion: { ok: boolean; texto: string } | null;
   estado: { estado: string; orden: string[]; salida: string; inicio: string } | null; estadoFicha: { estado: string; salida: string } | null;
+  estadoDescripcion: { estado: string; salida: string } | null; descripcion: string;
+  estadoVariaciones: { estado: string; salida: string } | null; variaciones: string[];
   slides: { n: number; png: boolean; jpg: boolean; version: number }[]; progreso: number; cerrado: boolean; original: string[]; cupo: string;
 };
 
@@ -37,6 +41,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const [corrigiendo, setCorrigiendo] = useState<number | null>(null);
   const [cambio, setCambio] = useState("");
   const [grande, setGrande] = useState<number | null>(null);
+  const [grandeOriginal, setGrandeOriginal] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
   const [renombrando, setRenombrando] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState(nombre);
@@ -60,7 +65,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const enCurso = d?.estado?.estado === "en_curso" || d?.estadoFicha?.estado === "en_curso";
   useEffect(() => { if (!enCurso) return; const t = setInterval(() => { void cargar(); }, 4000); return () => clearInterval(t); }, [enCurso, cargar]);
   useEffect(() => {
-    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") { setGrande(null); setCorrigiendo(null); setRenombrando(false); } };
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") { setGrande(null); setGrandeOriginal(null); setCorrigiendo(null); setRenombrando(false); } };
     window.addEventListener("keydown", tecla); return () => window.removeEventListener("keydown", tecla);
   }, []);
 
@@ -170,9 +175,11 @@ export function Carrusel({ nombre }: { nombre: string }) {
         <Panel className="aparece">
           <div className="mb-3 flex items-center justify-between"><h2 className="text-[16px] font-semibold">Carrusel original</h2><span className="text-[13px]" style={{ color: "var(--fg-muted)" }}>{d.original.length} slides</span></div>
           <div className="flex gap-3 overflow-x-auto pb-1">
-            {d.original.map((s) => (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img key={s} src={`/api/archivo?ruta=${encodeURIComponent(`virales/${nombre}/${s}`)}`} alt="" className="h-36 shrink-0 rounded-xl object-cover" style={{ aspectRatio: "4/5" }} loading="lazy" />
+            {d.original.map((s, i) => (
+              <button key={s} className="shrink-0 cursor-zoom-in rounded-xl" onClick={() => setGrandeOriginal(s)} aria-label={`Ver el slide ${i + 1} del original en grande`}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={`/api/archivo?ruta=${encodeURIComponent(`virales/${nombre}/${s}`)}`} alt={`Slide ${i + 1} del original`} className="h-36 rounded-xl object-cover" style={{ aspectRatio: "4/5" }} loading="lazy" />
+              </button>
             ))}
           </div>
         </Panel>
@@ -301,6 +308,8 @@ export function Carrusel({ nombre }: { nombre: string }) {
         </Panel>
       )}
 
+      {(fase === "revision" || fase === "cerrado") && <Descripcion nombre={nombre} texto={d.descripcion} estado={d.estadoDescripcion} variaciones={d.variaciones} estadoVariaciones={d.estadoVariaciones} recargar={cargar} />}
+
       {corrigiendo !== null && (
         <div className="telon fixed inset-0 z-50 grid place-items-center p-4" onClick={() => setCorrigiendo(null)}>
           <div className="modal aparece w-full max-w-lg p-6" onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" aria-labelledby="titulo-corregir">
@@ -315,11 +324,16 @@ export function Carrusel({ nombre }: { nombre: string }) {
         </div>
       )}
 
+      {grandeOriginal !== null && (
+        <Visor src={`/api/archivo?ruta=${encodeURIComponent(`virales/${nombre}/${grandeOriginal}`)}`} alt="Slide del original"
+          posicion={d.original.indexOf(grandeOriginal)} total={d.original.length} onCerrar={() => setGrandeOriginal(null)}
+          onMover={(paso) => setGrandeOriginal((g) => d.original[d.original.indexOf(g ?? "") + paso] ?? g)} />
+      )}
+
       {grande !== null && (
-        <div className="telon fixed inset-0 z-50 grid place-items-center p-4" onClick={() => setGrande(null)}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={img(`salida/${nombre}/${grande}.${d.cerrado ? "jpg" : "png"}`)} alt={`Slide ${grande}`} className="max-h-[92dvh] rounded-2xl" style={{ boxShadow: "0 40px 100px -30px rgba(0,0,0,0.9)" }} />
-        </div>
+        <Visor src={img(`salida/${nombre}/${grande}.${d.cerrado ? "jpg" : "png"}`)} alt={`Slide ${grande}`}
+          posicion={d.slides.findIndex((s) => s.n === grande)} total={d.slides.length} onCerrar={() => setGrande(null)}
+          onMover={(paso) => setGrande((g) => d.slides[d.slides.findIndex((s) => s.n === g) + paso]?.n ?? g)} />
       )}
     </div>
   );

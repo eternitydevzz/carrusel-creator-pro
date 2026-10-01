@@ -12,10 +12,14 @@ let n = args.count > 1 ? args[1] : "1"
 let total = args.count > 2 ? args[2] : "4"
 let out = args.count > 3 ? args[3] : "plantilla.png"
 let conFondo = args.count > 4 && args[4] == "fondo"
-let handle = ProcessInfo.processInfo.environment["PIE_HANDLE"] ?? "@cristianews.ai"
+let handle = ProcessInfo.processInfo.environment["PIE_HANDLE"] ?? "@tucuenta"
 let W = 1080, H = 1350
 let azul = CGColor(red: 0x1A/255.0, green: 0x79/255.0, blue: 0xFB/255.0, alpha: 1)
-let blanco = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+// PIE_ESTILO=claro: para carruseles de fondo claro. El pie y los segmentos pasan a azul marino; la guía se dibuja sobre crema.
+let claro = ProcessInfo.processInfo.environment["PIE_ESTILO"] == "claro"
+let marino = CGColor(red: 0x0b/255.0, green: 0x1a/255.0, blue: 0x33/255.0, alpha: 1)
+let blanco = claro ? marino : CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+let textoPastilla = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
 
 let cs = CGColorSpaceCreateDeviceRGB()
 let ctx = CGContext(data: nil, width: W, height: H, bitsPerComponent: 8, bytesPerRow: 0, space: cs, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
@@ -26,7 +30,8 @@ ctx.translateBy(x: 0, y: CGFloat(H)); ctx.scaleBy(x: 1, y: -1)
 let colores = [CGColor(red: 0x0d/255.0, green: 0x20/255.0, blue: 0x50/255.0, alpha: 1),
                CGColor(red: 0x04/255.0, green: 0x09/255.0, blue: 0x15/255.0, alpha: 1)] as CFArray
 let grad = CGGradient(colorsSpace: cs, colors: colores, locations: [0, 1])!
-if conFondo { ctx.drawRadialGradient(grad, startCenter: CGPoint(x: 540, y: 600), startRadius: 0, endCenter: CGPoint(x: 540, y: 600), endRadius: 900, options: [.drawsAfterEndLocation]) }
+if conFondo && claro { ctx.setFillColor(CGColor(red: 0xF4/255.0, green: 0xEF/255.0, blue: 0xE6/255.0, alpha: 1)); ctx.fill(CGRect(x: 0, y: 0, width: W, height: H)) }
+else if conFondo { ctx.drawRadialGradient(grad, startCenter: CGPoint(x: 540, y: 600), startRadius: 0, endCenter: CGPoint(x: 540, y: 600), endRadius: 900, options: [.drawsAfterEndLocation]) }
 
 func texto(_ s: String, _ fuente: String, _ tam: CGFloat, centroX: CGFloat, baseY: CGFloat, color: CGColor) {
     let f = CTFontCreateWithName(fuente as CFString, tam, nil)
@@ -48,51 +53,89 @@ ctx.setFillColor(CGColor(red: 0x0b/255.0, green: 0x1a/255.0, blue: 0x33/255.0, a
 ctx.addPath(pillPath); ctx.fillPath()
 ctx.setStrokeColor(azul); ctx.setLineWidth(3)
 ctx.addPath(pillPath); ctx.strokePath()
-texto("\(n)/\(total)", "HelveticaNeue-Bold", 32, centroX: pill.midX, baseY: 92, color: blanco)
+texto("\(n)/\(total)", "HelveticaNeue-Bold", 32, centroX: pill.midX, baseY: 92, color: textoPastilla)
 // Barra de progreso: un segmento por slide; el actual en azul, los demás en gris
 let nAct = Int(n) ?? 1, nTot = max(Int(total) ?? 4, 1)
 let segAncho: CGFloat = nTot > 8 ? 30 : 44, segAlto: CGFloat = 8, hueco: CGFloat = 8
 var sx: CGFloat = pill.maxX + 18
 for i in 1...nTot {
     let r = CGRect(x: sx, y: pill.midY - segAlto/2, width: segAncho, height: segAlto)
-    ctx.setFillColor(i == nAct ? azul : CGColor(red: 1, green: 1, blue: 1, alpha: 0.35))
+    ctx.setFillColor(i == nAct ? azul : claro ? CGColor(red: 0x0b/255.0, green: 0x1a/255.0, blue: 0x33/255.0, alpha: 0.25) : CGColor(red: 1, green: 1, blue: 1, alpha: 0.35))
     ctx.addPath(CGPath(roundedRect: r, cornerWidth: 4, cornerHeight: 4, transform: nil)); ctx.fillPath()
     sx += segAncho + hueco
 }
 
-// Pie: el @ centrado. La línea-estrella de encima es opcional (PIE_LINEA=1): a 1232 px chocaba
-// con el texto secundario cuando Codex lo colocaba pegado al borde, y sin ella el pie sigue leyéndose igual.
-if ProcessInfo.processInfo.environment["PIE_LINEA"] == "1" {
-    let yLinea: CGFloat = 1232
-    ctx.setStrokeColor(blanco); ctx.setLineWidth(2); ctx.setLineCap(.round)
-    ctx.move(to: CGPoint(x: 400, y: yLinea)); ctx.addLine(to: CGPoint(x: 508, y: yLinea))
-    ctx.move(to: CGPoint(x: 572, y: yLinea)); ctx.addLine(to: CGPoint(x: 680, y: yLinea))
-    ctx.strokePath()
-    let cx: CGFloat = 540, cy = yLinea, rE: CGFloat = 13, rI: CGFloat = 5.5
-    let star = CGMutablePath()
-    for i in 0..<10 {
-        let r = i % 2 == 0 ? rE : rI
-        let a = -CGFloat.pi/2 + CGFloat(i) * CGFloat.pi/5
-        let p = CGPoint(x: cx + r * cos(a), y: cy + r * sin(a))
-        if i == 0 { star.move(to: p) } else { star.addLine(to: p) }
-    }
-    star.closeSubpath()
-    ctx.setFillColor(blanco); ctx.addPath(star); ctx.fillPath()
-}
-texto(handle, "HelveticaNeue-Medium", 30, centroX: 540, baseY: 1284, color: blanco)
+// Pie, copiado del esquema de los carruseles virales :
+//   izquierda: el @ en negrita y debajo el lema (PIE_LEMA), pequeño y con letras espaciadas;
+//   derecha: botón azul "DESLIZA →", separador y el adelanto del siguiente slide (PIE_SIGUIENTE, dos líneas separadas por " / ").
+//   En el último slide no hay botón: solo el separador y el adelanto (por ejemplo "SÍGUEME PARA MÁS / ...").
+let env = ProcessInfo.processInfo.environment
+let lema = (env["PIE_LEMA"] ?? "").uppercased()
+let siguiente = (env["PIE_SIGUIENTE"] ?? "").components(separatedBy: " / ").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty }
+let tenue = claro ? CGColor(red: 0x0b/255.0, green: 0x1a/255.0, blue: 0x33/255.0, alpha: 0.62) : CGColor(red: 1, green: 1, blue: 1, alpha: 0.7)
+let linea = claro ? CGColor(red: 0x0b/255.0, green: 0x1a/255.0, blue: 0x33/255.0, alpha: 0.28) : CGColor(red: 1, green: 1, blue: 1, alpha: 0.3)
 
-// A la derecha, a la altura del @: "desliza →" en todos menos el último; en el último, el icono de guardar
-ctx.setStrokeColor(blanco); ctx.setLineWidth(3.2); ctx.setLineJoin(.round); ctx.setLineCap(.round)
+/// Texto alineado a la izquierda, con espaciado entre letras; si no cabe en `ancho`, baja el tamaño hasta que cabe.
+@discardableResult
+func textoIzq(_ s: String, _ fuente: String, _ tam: CGFloat, x: CGFloat, baseY: CGFloat, color: CGColor, espacio: CGFloat = 0, ancho: CGFloat = 10_000) -> CGFloat {
+    var t = tam
+    while true {
+        let f = CTFontCreateWithName(fuente as CFString, t, nil)
+        let attr: [NSAttributedString.Key: Any] = [NSAttributedString.Key(kCTFontAttributeName as String): f,
+                                                   NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
+                                                   NSAttributedString.Key(kCTKernAttributeName as String): espacio * t / tam]
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: s, attributes: attr))
+        let w = CGFloat(CTLineGetTypographicBounds(line, nil, nil, nil))
+        if w <= ancho || t <= 9 {
+            ctx.saveGState(); ctx.textMatrix = CGAffineTransform(scaleX: 1, y: -1); ctx.textPosition = CGPoint(x: x, y: baseY); CTLineDraw(line, ctx); ctx.restoreGState()
+            return w
+        }
+        t -= 0.5
+    }
+}
+
+let yLineas: CGFloat = 1258
+ctx.setStrokeColor(linea); ctx.setLineWidth(1.5)
+ctx.move(to: CGPoint(x: 64, y: yLineas)); ctx.addLine(to: CGPoint(x: 500, y: yLineas))
+ctx.move(to: CGPoint(x: 530, y: yLineas)); ctx.addLine(to: CGPoint(x: 1016, y: yLineas))
+ctx.strokePath()
+
+// PIE_HANDLE_AZUL=1: el @ en el azul de la marca
+let colorHandle = env["PIE_HANDLE_AZUL"] == "1" ? azul : blanco
+if !handle.isEmpty { textoIzq(handle, "HelveticaNeue-Bold", 25, x: 64, baseY: 1295, color: colorHandle, ancho: 440) }
+if !lema.isEmpty { textoIzq(lema, "HelveticaNeue", 14, x: 64, baseY: 1322, color: tenue, espacio: 2.2, ancho: 440) }
+
+let xSep: CGFloat = 716
 if nAct < nTot {
-    texto("desliza", "HelveticaNeue-Medium", 24, centroX: 940, baseY: 1282, color: blanco)
-    let ax: CGFloat = 990, ay: CGFloat = 1273
-    ctx.move(to: CGPoint(x: ax, y: ay)); ctx.addLine(to: CGPoint(x: ax + 34, y: ay))
-    ctx.move(to: CGPoint(x: ax + 21, y: ay - 12)); ctx.addLine(to: CGPoint(x: ax + 34, y: ay)); ctx.addLine(to: CGPoint(x: ax + 21, y: ay + 12))
+    // botón DESLIZA: pastilla azul con el texto y la flecha en blanco
+    let boton = CGRect(x: 530, y: 1274, width: 160, height: 50)
+    ctx.setFillColor(azul); ctx.addPath(CGPath(roundedRect: boton, cornerWidth: 25, cornerHeight: 25, transform: nil)); ctx.fillPath()
+    let blancoPuro = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+    let wTxt = textoIzq("DESLIZA", "HelveticaNeue-Bold", 19, x: boton.minX + 22, baseY: 1306, color: blancoPuro, espacio: 0.5)
+    let ax = boton.minX + 22 + wTxt + 12, ay = boton.midY
+    ctx.setStrokeColor(blancoPuro); ctx.setLineWidth(2.6); ctx.setLineCap(.round); ctx.setLineJoin(.round)
+    ctx.move(to: CGPoint(x: ax, y: ay)); ctx.addLine(to: CGPoint(x: ax + 24, y: ay))
+    ctx.move(to: CGPoint(x: ax + 15, y: ay - 8)); ctx.addLine(to: CGPoint(x: ax + 24, y: ay)); ctx.addLine(to: CGPoint(x: ax + 15, y: ay + 8))
     ctx.strokePath()
-} else {
-    let bx: CGFloat = 996, by: CGFloat = 1254
-    ctx.move(to: CGPoint(x: bx, y: by)); ctx.addLine(to: CGPoint(x: bx + 28, y: by)); ctx.addLine(to: CGPoint(x: bx + 28, y: by + 38))
-    ctx.addLine(to: CGPoint(x: bx + 14, y: by + 27)); ctx.addLine(to: CGPoint(x: bx, y: by + 38)); ctx.closePath(); ctx.strokePath()
+}
+if nAct == nTot {
+    // último slide: botón "+ SEGUIR" en el sitio del DESLIZA
+    let boton = CGRect(x: 530, y: 1274, width: 160, height: 50)
+    ctx.setFillColor(azul); ctx.addPath(CGPath(roundedRect: boton, cornerWidth: 25, cornerHeight: 25, transform: nil)); ctx.fillPath()
+    let blancoPuro = CGColor(red: 1, green: 1, blue: 1, alpha: 1)
+    let px = boton.minX + 30, py = boton.midY
+    ctx.setStrokeColor(blancoPuro); ctx.setLineWidth(3); ctx.setLineCap(.round)
+    ctx.move(to: CGPoint(x: px - 8, y: py)); ctx.addLine(to: CGPoint(x: px + 8, y: py))
+    ctx.move(to: CGPoint(x: px, y: py - 8)); ctx.addLine(to: CGPoint(x: px, y: py + 8))
+    ctx.strokePath()
+    textoIzq("SEGUIR", "HelveticaNeue-Bold", 19, x: px + 20, baseY: 1306, color: blancoPuro, espacio: 0.5)
+}
+if !siguiente.isEmpty {
+    ctx.setStrokeColor(linea); ctx.setLineWidth(1.5)
+    ctx.move(to: CGPoint(x: xSep, y: 1274)); ctx.addLine(to: CGPoint(x: xSep, y: 1324)); ctx.strokePath()
+    for (i, l) in siguiente.prefix(2).enumerated() {
+        textoIzq(l.uppercased(), "HelveticaNeue", 13.5, x: xSep + 18, baseY: 1295 + CGFloat(i) * 23, color: tenue, espacio: 1.4, ancho: 1016 - (xSep + 18))
+    }
 }
 
 let img = ctx.makeImage()!

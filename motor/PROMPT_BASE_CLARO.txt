@@ -1,0 +1,25 @@
+IMÁGENES ADJUNTAS:
+{IMAGENES}
+
+Crea un carrusel vertical 4:5 (1080 x 1350 px) para Instagram sobre AI, de {N} slides. Es la versión en español y con nuestra marca de un carrusel viral: tiene que parecerse al original en un 90 %, en estilo, composición, escenas y cantidad de información. Acabado premium, como el original.
+
+LO FIJO (no se toca):
+- Estilo del original: fondo claro color crema, papel de textura suave, como en los slides originales. Los mismos muñecos de píxel 3D (vóxel) del original, con sus gorros y accesorios, sus escritorios de madera, portátiles, plantas, libros, notas de papel pegadas con cinta y flechas dibujadas a mano. La miniatura de la marca adjunta es solo referencia de tipografía, no de fondo ni de estilo.
+- Personaje: el de las fotos 1, 2 y 3. SOLO aparece en los slides cuyo guion lo pide. Misma cara y mismos rasgos; las fotos son solo para su identidad: no copies ninguna tal cual. En los slides "SIN PERSONAJE" no aparece él; los muñecos de píxel sí.
+- Ropa del personaje: {ROPA}.
+- Manos del personaje: una sola acción, la que indica el guion. Nunca manos de más ni dedos raros.
+- Azul de la marca: {AZUL}, sólido y plano, sin degradado. Ni cian ni turquesa. Todo el naranja del original pasa a este azul: titulares resaltados, líneas que conectan, botones, números, casillas y detalles. Los gorros y la ropa de los muñecos conservan sus colores. Los logos de las herramientas conservan los suyos.
+- Letra: Montserrat Black o ExtraBold en los titulares, grande, compacta y en mayúsculas y minúsculas como en el original; SemiBold en los textos secundarios. Titulares en negro con la parte indicada en azul. Sin contorno. Subrayado a mano y caja de color detrás de una palabra: solo donde el guion lo pide ("Subrayado a mano" y "Caja de color"), en el azul de la marca, como un trazo de rotulador irregular; en ningún otro sitio del titular. Las notas escritas a mano van en letra manuscrita gris oscuro y pueden llevar un trazo corto a mano debajo, en azul, como en el original.
+- Formato: la imagen ocupa todo el slide, de borde a borde. Sin marco.
+- Contador y pie: los pondremos nosotros después, encima de tu imagen, exactamente como se ven en la última imagen adjunta (la guía de zonas). Por eso tú no dibujas ningún número de slide, ningún @, ningún logo de cuenta, ningún botón de "swipe" ni ningún icono de pie. Las dos zonas que ocupan en la guía, la pastilla de arriba a la izquierda y la franja de abajo con el pie (el 10 % inferior de la imagen, desde unos 1.215 px de alto), quedan en tu imagen solo con fondo crema liso: ni escena, ni barras, ni tarjetas, ni muñecos, ni objetos. Si el slide original llega hasta abajo, encoge la composición para que termine antes de esa franja. Del original NO aparecen: su logo de arriba a la izquierda, su contador de arriba a la derecha, su lema de arriba a la derecha, ni su pie con la web, el "SWIPE" y el "NEXT:".
+- Dónde va el texto: como en el original, el titular arriba (empezando por debajo de la pastilla del contador, con aire) y la escena debajo. Todo termina claramente por encima de la franja del pie de la guía, con aire entre medias.
+- Texto: escribe solo lo que va entre comillas en el guion, exactamente igual y con todas sus tildes. Los titulares ya están escritos: no los cambies ni los acortes. Todo en español; se dice "AI". Solo quedan en su idioma los nombres de herramientas, marcas y los nombres de los roles que el guion da en inglés.
+- Nada inventado: ningún otro texto, cifra, rótulo, cartel ni logo, ni en la escena ni en el fondo. Si un texto no está en el guion, no aparece. Donde el original tiene un texto que el guion no recoge, deja la superficie lisa.
+- Carrusel original: te adjunto sus slides. Cada slide tuyo reproduce el slide original correspondiente: misma escena, misma composición, mismos muñecos y la misma cantidad de bloques, con los textos del guion en su sitio. Su naranja pasa al azul, su idioma pasa al español. Su @, su logo y su marca no aparecen.
+- Los {N} slides tienen que verse como un mismo carrusel: mismo estilo, misma letra y el mismo azul.
+
+CÓMO TRABAJAR: vas a generar los {N} slides uno detrás de otro. Cuando escribas la petición de cada imagen, copia en ella, tal cual, todo el bloque LO FIJO y la ficha completa de ese slide. No resumas ni omitas nada de LO FIJO en ninguna imagen.
+
+EL GUION DEL CARRUSEL:
+
+{SLIDES}

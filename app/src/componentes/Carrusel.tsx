@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, FolderOpen, Loader2, Pencil, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
-import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
+import { Aviso, Campo, Panel, Pastilla } from "@/componentes/ui";
 import { Descripcion } from "@/componentes/Descripcion";
 import { Visor } from "@/componentes/Visor";
 import type { Ficha, Slide } from "@/lib/motor";
@@ -45,6 +45,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const [ocupado, setOcupado] = useState(false);
   const [renombrando, setRenombrando] = useState(false);
   const [nuevoNombre, setNuevoNombre] = useState(nombre);
+  const [ahora, setAhora] = useState(0); // hora de la última consulta: el contador de minutos no lee el reloj al dibujar
   const cargaInicial = useRef(true);
   const estabaEnCurso = useRef(false);
 
@@ -52,7 +53,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
     const r = await fetch(`/api/carrusel/${nombre}`, { cache: "no-store" });
     if (!r.ok) return;
     const datos = (await r.json()) as Datos;
-    setD(datos);
+    setD(datos); setAhora(Date.now());
     if (cargaInicial.current || !sucia) { setFicha(datos.ficha); if (datos.ficha) cargaInicial.current = false; }
     const enCurso = datos.estado?.estado === "en_curso" || datos.estadoFicha?.estado === "en_curso";
     if (estabaEnCurso.current && !enCurso && typeof Notification !== "undefined" && Notification.permission === "granted") {
@@ -61,7 +62,8 @@ export function Carrusel({ nombre }: { nombre: string }) {
     estabaEnCurso.current = enCurso;
   }, [nombre, sucia]);
 
-  useEffect(() => { void cargar(); }, [cargar]);
+  // la carga va detrás de una promesa: así el estado se actualiza fuera del efecto (regla react-hooks/set-state-in-effect)
+  useEffect(() => { void Promise.resolve().then(cargar); }, [cargar]);
   const enCurso = d?.estado?.estado === "en_curso" || d?.estadoFicha?.estado === "en_curso";
   useEffect(() => { if (!enCurso) return; const t = setInterval(() => { void cargar(); }, 4000); return () => clearInterval(t); }, [enCurso, cargar]);
   useEffect(() => {
@@ -119,7 +121,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
     if (!confirm(`¿Borrar el carrusel "${nombre}" con su ficha, su original y sus imágenes? No se puede deshacer.`)) return;
     const r = await fetch(`/api/carrusel/${nombre}`, { method: "DELETE" });
     if (!r.ok) { setMensaje({ tono: "danger", texto: (await r.json()).error }); return; }
-    window.location.href = "/";
+    router.push("/");
   }
 
   function cambiarSlide(i: number, k: string, v: string) { setFicha((f) => { if (!f) return f; return { ...f, slides: f.slides.map((s, j) => (j === i ? { ...s, [k]: v } : s)) }; }); setSucia(true); }
@@ -135,7 +137,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const n = d.ficha ? Number(d.ficha.cabecera.slides) : d.slides.length;
   const corrigiendoAhora = d.estado?.orden?.[0] === "corregir";
   const progreso = fase === "generando" ? (corrigiendoAhora ? 50 : Math.min(100, Math.round((d.progreso / Math.max(n, 1)) * 100))) : 0;
-  const minutos = d.estado?.inicio ? Math.max(0, Math.round((Date.now() - new Date(d.estado.inicio).getTime()) / 60000)) : 0;
+  const minutos = d.estado?.inicio && ahora ? Math.max(0, Math.round((ahora - new Date(d.estado.inicio).getTime()) / 60000)) : 0;
   const sello = d.slides.reduce((a, s) => a + s.version, 0);
   const img = (ruta: string) => `/api/archivo?ruta=${encodeURIComponent(ruta)}&t=${sello}`;
   // "Cuenta 'x': 29 imágenes en las últimas 24 h (tope 60)" → cuántas quedan hoy

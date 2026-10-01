@@ -16,7 +16,8 @@ export default function AjustesPagina() {
   const [aviso, setAviso] = useState<{ tono: "ok" | "danger"; texto: string } | null>(null);
 
   async function cargar() { const d = (await (await fetch("/api/ajustes", { cache: "no-store" })).json()) as Ajustes; setA(d); setCuenta(d.cuenta); setUbi(d.ubicacion); setCarpeta(d.datos); }
-  useEffect(() => { void cargar(); }, []);
+  // la carga va detrás de una promesa: así el estado se actualiza fuera del efecto (regla react-hooks/set-state-in-effect)
+  useEffect(() => { void Promise.resolve().then(cargar); }, []);
 
   async function guardar() {
     setGuardando(true); setAviso(null);

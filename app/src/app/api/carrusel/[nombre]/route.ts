@@ -12,7 +12,7 @@ async function progresoCodex(salida: string): Promise<number> {
     const logs = (await fs.readdir(path.join(salida, "_logs"))).filter((l) => /^carrusel_\d+\.log$/.test(l)).sort((a, b) => parseInt(a.slice(9)) - parseInt(b.slice(9)));
     if (!logs.length) return 0;
     // el log trae códigos de color ("session id:\x1b[0m 01a0…"): fuera antes de buscar el id
-    // eslint-disable-next-line no-control-regex
+     
     const log = (await fs.readFile(path.join(salida, "_logs", logs[logs.length - 1]), "utf8")).replace(/\x1b\[[0-9;]*m/g, "");
     const sid = /session id:\s*([0-9a-f-]{36})/.exec(log)?.[1];
     if (!sid) return 0;

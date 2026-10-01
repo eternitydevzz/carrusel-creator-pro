@@ -14,7 +14,8 @@ export default function Branding() {
   const [aviso, setAviso] = useState<{ tono: "ok" | "danger"; texto: string } | null>(null);
 
   async function cargar() { const r = await fetch("/api/marca", { cache: "no-store" }); const d = (await r.json()) as Marca; setM(d); setCampos(d.marca); }
-  useEffect(() => { void cargar(); }, []);
+  // la carga va detrás de una promesa: así el estado se actualiza fuera del efecto (regla react-hooks/set-state-in-effect)
+  useEffect(() => { void Promise.resolve().then(cargar); }, []);
 
   async function guardar() {
     setGuardando(true); setAviso(null);

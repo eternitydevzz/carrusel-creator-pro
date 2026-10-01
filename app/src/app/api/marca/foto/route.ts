@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { datos, escribirMarca, leerMarca } from "@/lib/motor";
+import { cliente, escribirMarca, leerMarca } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
   if (!archivos.length) return NextResponse.json({ error: "No llegó ningún archivo" }, { status: 400 });
 
   const marca = await leerMarca();
-  const carpeta = path.join(datos(), "marca", tipo === "referencia" ? "referencias" : "fotos");
+  const carpeta = path.join(cliente(), "marca", tipo === "referencia" ? "referencias" : "fotos");
   await fs.mkdir(carpeta, { recursive: true });
   const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter(Boolean);
   const guardados: string[] = [];
@@ -28,13 +28,13 @@ export async function POST(req: Request) {
     const destino = path.join(carpeta, `${base}.jpg`);
     await new Promise<void>((res, rej) => execFile("sips", ["-s", "format", "jpeg", "-Z", "1600", tmp, "--out", destino], (e) => (e ? rej(e) : res()))).catch(async () => { await fs.rm(tmp, { force: true }); });
     await fs.rm(tmp, { force: true });
-    guardados.push(path.relative(path.join(datos(), "marca"), destino));
+    guardados.push(path.relative(path.join(cliente(), "marca"), destino));
   }
 
   if (tipo === "personaje") {
     // se conservan como máximo 3 fotos: las nuevas primero
     const nuevas = [...guardados, ...fotos].slice(0, 3);
-    for (const vieja of fotos.filter((f) => !nuevas.includes(f))) await fs.rm(path.join(datos(), "marca", vieja), { force: true });
+    for (const vieja of fotos.filter((f) => !nuevas.includes(f))) await fs.rm(path.join(cliente(), "marca", vieja), { force: true });
     marca.fotos = nuevas.join(", ");
   }
   if (tipo === "tipografia") marca.tipografia = guardados[0];
@@ -44,8 +44,8 @@ export async function POST(req: Request) {
 
 export async function DELETE(req: Request) {
   const { ruta } = (await req.json()) as { ruta: string };
-  const absoluta = path.resolve(datos(), "marca", ruta);
-  if (!absoluta.startsWith(path.resolve(datos(), "marca") + path.sep)) return NextResponse.json({ error: "Ruta no permitida" }, { status: 400 });
+  const absoluta = path.resolve(cliente(), "marca", ruta);
+  if (!absoluta.startsWith(path.resolve(cliente(), "marca") + path.sep)) return NextResponse.json({ error: "Ruta no permitida" }, { status: 400 });
   await fs.rm(absoluta, { force: true });
   const marca = await leerMarca();
   marca.fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter((f) => f && f !== ruta).join(", ");

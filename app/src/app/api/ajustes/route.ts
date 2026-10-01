@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { CONFIG, DATOS_POR_DEFECTO, PATH, cambiarDatos, datos, escribirAjustes, leerAjustes, leerTexto, motor } from "@/lib/motor";
+import { CONFIG, DATOS_POR_DEFECTO, PATH, cambiarDatos, cliente, datos, escribirAjustes, leerAjustes, leerTexto, motor } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +23,14 @@ async function creditos(clave: string): Promise<{ creditos: number | null; error
   } catch { return { creditos: null, error: "No se pudo consultar ScrapeCreators" }; }
 }
 
+// la ubicación de los metadatos es de cada cliente (perfil.json); la de ajustes.json queda como valor por defecto
+async function leerPerfil(): Promise<Record<string, unknown>> {
+  try { return JSON.parse(await fs.readFile(path.join(cliente(), "perfil.json"), "utf8")); } catch { return {}; }
+}
+
 export async function GET() {
   const ajustes = await leerAjustes();
+  const perfil = await leerPerfil();
   const clave = String(ajustes.scrapecreators_key ?? "");
   const [codex, cupo, claude, sc] = await Promise.all([comando("codex", ["login", "status"]), motor(["cupo"], { timeoutMs: 15_000 }), comando("claude", ["--version"]), creditos(clave)]);
   const herramientas: Record<string, boolean> = {};
@@ -32,7 +38,7 @@ export async function GET() {
   return NextResponse.json({
     clave_puesta: clave.length > 0, clave_final: clave.slice(-4), creditos: sc.creditos, creditos_error: sc.error,
     cuenta: (await leerTexto(path.join(datos(), "CUENTA_ACTUAL.txt"))).trim(),
-    ubicacion: ajustes.ubicacion ?? { ciudad: "Newark", estado: "New Jersey", pais: "United States", codigo: "US", lat: 40.7357, lon: -74.1724 },
+    ubicacion: perfil.ubicacion ?? ajustes.ubicacion ?? { ciudad: "Newark", estado: "New Jersey", pais: "United States", codigo: "US", lat: 40.7357, lon: -74.1724 },
     codex, codex_ok: /logged in/i.test(codex), claude, claude_ok: /^\d+\.\d+/.test(claude), cupo: cupo.salida, herramientas,
     datos: datos(), datos_por_defecto: DATOS_POR_DEFECTO, config: CONFIG,
   });
@@ -46,7 +52,7 @@ export async function POST(req: Request) {
   }
   const ajustes = await leerAjustes();
   if (typeof cuerpo.scrapecreators_key === "string" && cuerpo.scrapecreators_key.trim()) ajustes.scrapecreators_key = cuerpo.scrapecreators_key.trim();
-  if (cuerpo.ubicacion) ajustes.ubicacion = cuerpo.ubicacion;
+  if (cuerpo.ubicacion) await fs.writeFile(path.join(cliente(), "perfil.json"), JSON.stringify({ ...(await leerPerfil()), ubicacion: cuerpo.ubicacion }, null, 2));
   await escribirAjustes(ajustes);
   if (typeof cuerpo.cuenta === "string" && cuerpo.cuenta.trim()) await fs.writeFile(path.join(datos(), "CUENTA_ACTUAL.txt"), cuerpo.cuenta.trim().replace(/\s+/g, "_") + "\n");
   return NextResponse.json({ ok: true });

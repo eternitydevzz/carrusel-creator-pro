@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { datos, leerEstado, leerTexto, motor, nombreSeguro, parsearFicha } from "@/lib/motor";
+import { cliente, leerEstado, leerTexto, motor, nombreSeguro, parsearFicha } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +24,7 @@ async function progresoCodex(salida: string): Promise<number> {
 export async function GET(_req: Request, { params }: { params: Promise<{ nombre: string }> }) {
   const { nombre } = await params;
   if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
-  const D = datos();
+  const D = cliente();
   const salida = path.join(D, "salida", nombre);
   const fichaTxt = await leerTexto(path.join(D, "fichas", `${nombre}.md`));
   const estado = await leerEstado(path.join(salida, "_estado.json"));
@@ -63,7 +63,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ nombre:
 export async function DELETE(_req: Request, { params }: { params: Promise<{ nombre: string }> }) {
   const { nombre } = await params;
   if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
-  const D = datos();
+  const D = cliente();
   if ((await leerEstado(path.join(D, "salida", nombre, "_estado.json")))?.estado === "en_curso") return NextResponse.json({ error: "Espera a que termine la generación" }, { status: 409 });
   for (const ruta of [path.join(D, "fichas", `${nombre}.md`), path.join(D, "salida", nombre), path.join(D, "virales", nombre)]) await fs.rm(ruta, { recursive: true, force: true });
   return NextResponse.json({ ok: true });

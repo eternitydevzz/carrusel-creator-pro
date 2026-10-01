@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { datos, nombreSeguro } from "@/lib/motor";
+import { cliente, nombreSeguro } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 export async function GET(_req: Request, { params }: { params: Promise<{ nombre: string }> }) {
   const { nombre } = await params;
   if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
-  const salida = path.join(datos(), "salida", nombre);
+  const salida = path.join(cliente(), "salida", nombre);
   const jpgs = (await fs.readdir(salida).catch(() => [] as string[])).filter((a) => /^\d+\.jpg$/.test(a)).sort((a, b) => parseInt(a) - parseInt(b));
   if (!jpgs.length) return NextResponse.json({ error: "Este carrusel no tiene JPG finales todavía" }, { status: 404 });
   // la descripción de Instagram y sus variaciones van dentro si ya se crearon

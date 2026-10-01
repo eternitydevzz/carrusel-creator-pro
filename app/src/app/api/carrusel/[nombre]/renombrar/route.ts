@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import path from "node:path";
-import { datos, existe, leerEstado, limpiarNombre, nombreSeguro, renombrar } from "@/lib/motor";
+import { cliente, existe, leerEstado, limpiarNombre, nombreSeguro, renombrar } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ nombre:
   const limpio = limpiarNombre(nuevo ?? "");
   if (!limpio) return NextResponse.json({ error: "El nombre tiene que tener letras o números" }, { status: 400 });
   if (limpio === nombre) return NextResponse.json({ ok: true, nombre });
-  const D = datos();
+  const D = cliente();
   if ((await leerEstado(path.join(D, "salida", nombre, "_estado.json")))?.estado === "en_curso") return NextResponse.json({ error: "Espera a que termine la generación para cambiar el nombre" }, { status: 409 });
   for (const ruta of [path.join(D, "fichas", `${limpio}.md`), path.join(D, "salida", limpio), path.join(D, "virales", limpio)]) {
     if (await existe(ruta)) return NextResponse.json({ error: `Ya existe un carrusel llamado ${limpio}` }, { status: 409 });

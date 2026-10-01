@@ -1,29 +1,39 @@
 import { NextResponse } from "next/server";
-import { existsSync } from "node:fs";
+import { promises as fs, existsSync } from "node:fs";
 import path from "node:path";
-import { datos, escribirAjustes, leerAjustes, leerMarca } from "@/lib/motor";
+import { cliente, datos, escribirAjustes, leerAjustes, leerMarca, perfilActivo } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
-/** ¿Hace falta la bienvenida? Sí, si no se ha terminado nunca y además la marca está incompleta
- *  (sin @ propio, con menos de 2 fotos del personaje o sin referencia de estilo).
- *  Así, quien ya tenía su marca configurada antes de existir la bienvenida no la ve. */
-export async function GET() {
-  const ajustes = await leerAjustes();
-  const marca = await leerMarca();
-  const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter((f) => f && existsSync(path.join(datos(), "marca", f)));
-  const tipografia = !!marca.tipografia && existsSync(path.join(datos(), "marca", marca.tipografia));
-  const handle = !!marca.handle && marca.handle !== "@tucuenta";
-  const faltan = [!handle && "tu cuenta", fotos.length < 2 && "tus fotos", !tipografia && "la referencia de estilo"].filter(Boolean);
-  const hecha = ajustes.bienvenida_hecha === true || faltan.length === 0;
-  return NextResponse.json({ hecha, faltan });
+async function leerPerfil(): Promise<Record<string, unknown>> {
+  try { return JSON.parse(await fs.readFile(path.join(cliente(), "perfil.json"), "utf8")); } catch { return {}; }
 }
 
-/** { hecha: true } al terminar; { hecha: false } para repetirla desde Ajustes. */
-export async function POST(req: Request) {
-  const { hecha } = (await req.json()) as { hecha?: boolean };
+/** ¿Hace falta la bienvenida para el cliente activo? Sí, si no la terminó y su marca está incompleta
+ *  (sin @ propio, con menos de 2 fotos del personaje o sin referencia de estilo).
+ *  modo "inicial": primera vez del equipo en este Mac (marca + conexiones); "cliente": solo la marca de un cliente nuevo. */
+export async function GET() {
   const ajustes = await leerAjustes();
-  ajustes.bienvenida_hecha = hecha === true;
-  await escribirAjustes(ajustes);
+  const perfil = await leerPerfil();
+  const marca = await leerMarca();
+  const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter((f) => f && existsSync(path.join(cliente(), "marca", f)));
+  const tipografia = !!marca.tipografia && existsSync(path.join(cliente(), "marca", marca.tipografia));
+  const handle = !!marca.handle && marca.handle !== "@tucuenta";
+  const faltan = [!handle && "la cuenta", fotos.length < 2 && "las fotos", !tipografia && "la referencia de estilo"].filter(Boolean);
+  const hecha = perfil.bienvenida_hecha === true || faltan.length === 0;
+  // el equipo ya está configurado si terminó la bienvenida completa, si la terminó antes de existir los perfiles
+  // (bienvenida_hecha global) o si ya hay más de un cliente (alguien creó uno nuevo desde el selector)
+  let clientes = 0;
+  try { clientes = (await fs.readdir(path.join(datos(), "perfiles"), { withFileTypes: true })).filter((e) => e.isDirectory()).length; } catch { /* sin perfiles */ }
+  const modo = ajustes.equipo_configurado === true || ajustes.bienvenida_hecha === true || clientes > 1 ? "cliente" : "inicial";
+  return NextResponse.json({ hecha, faltan, modo, perfil: perfilActivo(), nombre: String(perfil.nombre ?? "") });
+}
+
+/** { hecha: true, modo } al terminar: marca al cliente como configurado y, si era la primera vez, al equipo. */
+export async function POST(req: Request) {
+  const { hecha, modo } = (await req.json()) as { hecha?: boolean; modo?: string };
+  const f = path.join(cliente(), "perfil.json");
+  await fs.writeFile(f, JSON.stringify({ ...(await leerPerfil()), bienvenida_hecha: hecha === true }, null, 2));
+  if (hecha === true && modo === "inicial") await escribirAjustes({ ...(await leerAjustes()), equipo_configurado: true });
   return NextResponse.json({ ok: true });
 }

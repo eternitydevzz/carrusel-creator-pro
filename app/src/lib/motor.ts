@@ -1,6 +1,6 @@
 // Puente entre la interfaz y el motor (motor/carrusel.sh). Todo corre en el Mac del usuario.
-import { spawn, execFile } from "node:child_process";
-import { promises as fs, readFileSync, existsSync } from "node:fs";
+import { spawn, execFile, execFileSync } from "node:child_process";
+import { promises as fs, readFileSync, existsSync, readdirSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
@@ -20,6 +20,34 @@ export function datos(): string {
   const c = leerConfig().datos;
   return c && existsSync(c) ? c : DATOS_POR_DEFECTO;
 }
+/* ---------- Clientes (perfiles) ----------
+   Cada cliente tiene su carpeta en datos/perfiles/<id>/ con marca, fichas, virales, salida y perfil.json (nombre y ubicación).
+   Lo compartido (ajustes.json con el cliente activo, CUPO.csv, CUENTA_ACTUAL.txt, capas) queda en datos/. */
+export const ID_PERFIL = /^[a-z0-9_-]+$/;
+let migrado = "";
+/** Si los datos son del formato antiguo (un solo cliente), los pasa a perfiles una vez (motor/migrar_perfiles.py: copia antes de mover). */
+function asegurarPerfiles(D: string) {
+  if (migrado === D) return;
+  const P = path.join(D, "perfiles");
+  const hay = existsSync(P) && readdirSync(P, { withFileTypes: true }).some((e) => e.isDirectory());
+  if (!hay) execFileSync("python3", [path.join(MOTOR, "migrar_perfiles.py"), D], { env: { ...process.env, PATH }, stdio: "pipe" });
+  migrado = D;
+}
+export function perfilActivo(): string {
+  const D = datos();
+  asegurarPerfiles(D);
+  let id = "";
+  try { id = String(JSON.parse(readFileSync(path.join(D, "ajustes.json"), "utf8")).perfil_activo ?? ""); } catch { /* sin ajustes */ }
+  if (ID_PERFIL.test(id) && existsSync(path.join(D, "perfiles", id))) return id;
+  // el activo no existe (borrado a mano): el primero que haya
+  return readdirSync(path.join(D, "perfiles"), { withFileTypes: true }).filter((e) => e.isDirectory() && ID_PERFIL.test(e.name)).map((e) => e.name).sort()[0] ?? "";
+}
+/** Carpeta del cliente activo: su marca, fichas, originales y carruseles. */
+export function cliente(): string {
+  const id = perfilActivo();
+  return id ? path.join(datos(), "perfiles", id) : datos();
+}
+
 export async function cambiarDatos(ruta: string) {
   const abs = path.resolve(ruta.replace(/^~/, os.homedir()));
   for (const sub of ["marca/fotos", "fichas", "virales", "salida"]) await fs.mkdir(path.join(abs, sub), { recursive: true });
@@ -35,7 +63,8 @@ export async function cambiarDatos(ruta: string) {
 // Homebrew y ~/.local/bin no están en el PATH de un proceso arrancado desde una app: se añaden siempre.
 const RUTAS = [path.join(os.homedir(), ".local/bin"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"];
 export const PATH = [...new Set([...RUTAS, ...(process.env.PATH ?? "").split(":")])].join(":");
-const entorno = () => ({ ...process.env, DATOS: datos(), PATH });
+// el motor recibe la carpeta común y el cliente: una orden larga sigue con su cliente aunque se cambie de cliente en la app
+const entorno = () => ({ ...process.env, DATOS: datos(), PERFIL: perfilActivo(), PATH });
 
 /** Ejecuta una orden del motor y espera a que termine. Para lo que dura segundos. */
 export function motor(args: string[], opciones: { timeoutMs?: number } = {}): Promise<{ codigo: number; salida: string }> {
@@ -68,15 +97,20 @@ export async function motorFondo(args: string[], archivoEstado: string) {
 
 /** ¿Hay alguna generación o corrección en curso en cualquier carrusel? Codex comparte el cupo: solo una a la vez. */
 export async function ordenEnCurso(): Promise<string | null> {
-  const salida = path.join(datos(), "salida");
+  // en todos los clientes: Codex es una sola cuenta y hace una generación a la vez
+  const raiz = path.join(datos(), "perfiles");
+  let salidas: string[] = [];
+  try { salidas = (await fs.readdir(raiz)).map((p) => path.join(raiz, p, "salida")); } catch { salidas = [path.join(datos(), "salida")]; }
+  for (const salida of salidas) {
   let carpetas: string[] = [];
-  try { carpetas = await fs.readdir(salida); } catch { return null; }
+  try { carpetas = await fs.readdir(salida); } catch { continue; }
   for (const c of carpetas) {
     const e = await leerEstado(path.join(salida, c, "_estado.json"));
     if (e?.estado === "en_curso") {
       // si el proceso murió sin cerrar el estado, no bloquear para siempre: 40 minutos de margen
       if (Date.now() - new Date(e.inicio).getTime() < 40 * 60_000) return c;
     }
+  }
   }
   return null;
 }
@@ -92,7 +126,7 @@ export function limpiarNombre(nombre: string) {
 }
 
 export async function leerMarca(): Promise<Record<string, string>> {
-  const t = await leerTexto(path.join(datos(), "marca", "marca.txt"));
+  const t = await leerTexto(path.join(cliente(), "marca", "marca.txt"));
   const m: Record<string, string> = {};
   for (const l of t.split("\n")) { const i = l.indexOf(":"); if (i > 0) m[l.slice(0, i).trim()] = l.slice(i + 1).trim(); }
   return m;
@@ -101,8 +135,8 @@ export async function escribirMarca(m: Record<string, string>) {
   const orden = ["handle", "azul", "angulo", "ropa", "idioma", "fotos", "tipografia", "pie", "tope_imagenes_dia"];
   const lineas = orden.filter((k) => m[k] !== undefined).map((k) => `${k}: ${m[k]}`);
   for (const k of Object.keys(m)) if (!orden.includes(k)) lineas.push(`${k}: ${m[k]}`);
-  await fs.mkdir(path.join(datos(), "marca", "fotos"), { recursive: true });
-  await fs.writeFile(path.join(datos(), "marca", "marca.txt"), lineas.join("\n") + "\n");
+  await fs.mkdir(path.join(cliente(), "marca", "fotos"), { recursive: true });
+  await fs.writeFile(path.join(cliente(), "marca", "marca.txt"), lineas.join("\n") + "\n");
 }
 export async function leerAjustes(): Promise<Record<string, unknown>> {
   try { return JSON.parse(await fs.readFile(path.join(datos(), "ajustes.json"), "utf8")); } catch { return {}; }
@@ -141,7 +175,7 @@ export function serializarFicha(f: Ficha): string {
 
 /** Cambia el nombre de un carrusel: ficha, original y salida. */
 export async function renombrar(viejo: string, nuevo: string) {
-  const D = datos();
+  const D = cliente();
   for (const [a, b] of [[path.join(D, "fichas", `${viejo}.md`), path.join(D, "fichas", `${nuevo}.md`)], [path.join(D, "virales", viejo), path.join(D, "virales", nuevo)], [path.join(D, "salida", viejo), path.join(D, "salida", nuevo)]]) {
     if (await existe(a)) await fs.rename(a, b);
   }
@@ -157,7 +191,7 @@ export async function renombrar(viejo: string, nuevo: string) {
 export type Resumen = { nombre: string; slides: number; cta: string; ficha: boolean; original: boolean; generados: number; cerrado: boolean; fase: "ficha" | "generando" | "revision" | "cerrado" | "sin_ficha"; fecha?: string };
 
 export async function listarCarruseles(): Promise<Resumen[]> {
-  const D = datos();
+  const D = cliente();
   const nombres = new Set<string>();
   for (const carpeta of ["fichas", "salida", "virales"]) {
     try { for (const f of await fs.readdir(path.join(D, carpeta))) if (!f.startsWith("_") && !f.startsWith(".")) nombres.add(f.replace(/\.md$/, "")); } catch { /* vacío */ }

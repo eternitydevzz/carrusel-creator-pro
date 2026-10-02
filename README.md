@@ -24,7 +24,7 @@ No es solo poner unas claves. La app depende de cosas que solo hay en un Mac: el
 El repositorio es privado: necesitas que te inviten y entrar en GitHub con tu cuenta (la primera vez, `git` te pedirá iniciar sesión; también vale `gh auth login`).
 
 ```bash
-git clone https://github.com/CristianortizKing/carrusel-creator-pro.git
+git clone https://github.com/eternitydevzz/carrusel-creator-pro.git
 cd carrusel-creator-pro
 ./instalar.sh
 ```

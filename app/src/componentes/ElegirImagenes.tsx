@@ -1,5 +1,6 @@
 "use client";
 
+import { llamar, postJson } from "@/lib/llamar";
 import { useState } from "react";
 import { Check, Loader2, RotateCcw } from "lucide-react";
 import { Aviso, Panel } from "@/componentes/ui";
@@ -18,8 +19,8 @@ export function ElegirImagenes({ nombre, archivos, slides, img, onHecho }: { nom
   async function usar() {
     setGuardando(true); setError("");
     try {
-      const r = await fetch(`/api/carrusel/${nombre}/accion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "elegir", lista: orden }) });
-      if (!r.ok) { setError((await r.json()).error ?? "No se pudieron colocar"); return; }
+      const { ok, datos } = await llamar(`/api/carrusel/${nombre}/accion`, postJson({ accion: "elegir", lista: orden }));
+      if (!ok) { setError(datos.error ?? "No se pudieron colocar"); return; }
       await onHecho();
     } finally { setGuardando(false); }
   }

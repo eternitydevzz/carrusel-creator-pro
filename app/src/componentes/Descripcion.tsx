@@ -1,5 +1,6 @@
 "use client";
 
+import { llamar as api, postJson } from "@/lib/llamar";
 import { useEffect, useState } from "react";
 import { Check, Copy, FileText, Layers, Loader2, RefreshCw, Save } from "lucide-react";
 import { Aviso, Panel } from "@/componentes/ui";
@@ -22,9 +23,8 @@ export function Descripcion({ nombre, texto, estado, variaciones, estadoVariacio
 
   async function llamar(cuerpo: Record<string, unknown>) {
     setAviso(null);
-    const r = await fetch(`/api/carrusel/${nombre}/accion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
-    const res = await r.json();
-    if (!r.ok) { setAviso({ tono: "danger", texto: res.error ?? "No se pudo" }); return false; }
+    const { ok, datos: res } = await api(`/api/carrusel/${nombre}/accion`, postJson(cuerpo));
+    if (!ok) { setAviso({ tono: "danger", texto: res.error ?? "No se pudo" }); return false; }
     return true;
   }
   async function crear() {

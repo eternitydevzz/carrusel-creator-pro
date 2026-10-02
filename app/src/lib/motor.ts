@@ -78,21 +78,24 @@ export function motor(args: string[], opciones: { timeoutMs?: number } = {}): Pr
   });
 }
 
-/** Lanza una orden larga (generar, corregir, ficha_ia) sin esperar. Escribe su salida en un archivo de estado. */
+/** Lanza una orden larga (generar, corregir, ficha_ia, descripción, variaciones) sin esperar.
+ *  La orden escribe su salida en <estado>.log y, al terminar, su código en <estado>.fin: así su final queda apuntado aunque
+ *  el servidor de la app se reinicie o se cierre la Terminal a mitad. leerEstado() junta las piezas cada vez que alguien pregunta.
+ *  (Antes la salida y el final los escribía este proceso: si se reiniciaba, o si una escritura de "en curso" llegaba tarde,
+ *  la pantalla se quedaba en "Generando…" para siempre.) */
 export async function motorFondo(args: string[], archivoEstado: string) {
   await fs.mkdir(path.dirname(archivoEstado), { recursive: true });
-  const inicio = { estado: "en_curso", orden: args, inicio: new Date().toISOString(), salida: "" };
-  await fs.writeFile(archivoEstado, JSON.stringify(inicio));
-  const hijo = spawn("/bin/zsh", [SCRIPT, ...args], { env: entorno(), detached: true, stdio: ["ignore", "pipe", "pipe"] });
-  let salida = "";
-  const volcar = async (fin?: number) => {
-    const estado = fin === undefined ? "en_curso" : fin === 0 ? "ok" : "error";
-    await fs.writeFile(archivoEstado, JSON.stringify({ ...inicio, estado, codigo: fin, salida, fin: fin === undefined ? undefined : new Date().toISOString() }));
-  };
-  hijo.stdout.on("data", (d) => { salida += d.toString(); void volcar(); });
-  hijo.stderr.on("data", (d) => { salida += d.toString(); void volcar(); });
-  hijo.on("close", (codigo) => { void volcar(codigo ?? 1); });
+  const log = `${archivoEstado}.log`, fin = `${archivoEstado}.fin`;
+  await fs.rm(fin, { force: true }); await fs.writeFile(log, "");
+  const hijo = spawn("/bin/zsh", ["-c", 'zsh "$0" "$@" > "$LOG_ORDEN" 2>&1; echo $? > "$FIN_ORDEN"', SCRIPT, ...args],
+    { env: { ...entorno(), LOG_ORDEN: log, FIN_ORDEN: fin }, detached: true, stdio: "ignore" });
+  await fs.writeFile(archivoEstado, JSON.stringify({ estado: "en_curso", orden: args, inicio: new Date().toISOString(), salida: "", pid: hijo.pid }));
   hijo.unref();
+}
+
+function vivo(pid: unknown) {
+  if (typeof pid !== "number") return true; // estados de antes de este cambio: no se puede saber
+  try { process.kill(pid, 0); return true; } catch (e) { return (e as NodeJS.ErrnoException).code === "EPERM"; }
 }
 
 /** ¿Hay alguna generación o corrección en curso en cualquier carrusel? Codex comparte el cupo: solo una a la vez. */
@@ -116,7 +119,23 @@ export async function ordenEnCurso(): Promise<string | null> {
 }
 
 export async function leerEstado(archivoEstado: string) {
-  try { return JSON.parse(await fs.readFile(archivoEstado, "utf8")); } catch { return null; }
+  let e;
+  try { e = JSON.parse(await fs.readFile(archivoEstado, "utf8")); } catch { return null; }
+  if (e?.estado !== "en_curso") return e;
+  const salida = await leerTexto(`${archivoEstado}.log`);
+  const fin = (await leerTexto(`${archivoEstado}.fin`)).trim();
+  if (fin) {
+    const codigo = Number(fin);
+    const final = { ...e, estado: codigo === 0 ? "ok" : "error", codigo, salida, fin: new Date().toISOString() };
+    await fs.writeFile(archivoEstado, JSON.stringify(final)).catch(() => {});
+    return final;
+  }
+  if (!vivo(e.pid)) {
+    const final = { ...e, estado: "error", codigo: -1, salida: `${salida}\nLa orden se interrumpió antes de terminar (¿se cerró la app, la Terminal o el Mac?). Vuelve a lanzarla.`.trim(), fin: new Date().toISOString() };
+    await fs.writeFile(archivoEstado, JSON.stringify(final)).catch(() => {});
+    return final;
+  }
+  return { ...e, salida };
 }
 export async function leerTexto(ruta: string) { try { return await fs.readFile(ruta, "utf8"); } catch { return ""; } }
 export async function existe(ruta: string) { try { await fs.access(ruta); return true; } catch { return false; } }

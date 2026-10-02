@@ -45,7 +45,8 @@ MODELO="gpt-5.5"; ESFUERZO="medium"
 ajustar_4x5() {  # <origen> <destino>: deja la imagen en 4:5 recortando, nunca estirando
   local src="$1" dst="$2" w h nw nh
   w=$(sips -g pixelWidth "$src" | awk '/pixelWidth/{print $2}'); h=$(sips -g pixelHeight "$src" | awk '/pixelHeight/{print $2}')
-  [ -z "$w" ] || [ -z "$h" ] && return 1
+  # con una imagen rota sips devuelve "<nil>": sin esta comprobación la cuenta de abajo rompía el script sin mensaje
+  [[ "$w" == <-> && "$h" == <-> ]] || return 1
   if [ $((w*5)) -lt $((h*4)) ]; then nw=$w; nh=$((w*5/4)); else nh=$h; nw=$((h*4/5)); fi
   sips -c $nh $nw "$src" --out "$dst" >/dev/null && sips -z 1350 1080 "$dst" >/dev/null
 }
@@ -185,14 +186,17 @@ cmd_generar() {  # <nombre>
   if [ $K -gt $N ]; then
     # Codex rehízo alguna imagen. Si dijo cuáles son las buenas ("FINAL: 2,4,5"), se usan esas; si no, se guardan todas
     # en _revisar/ y se eligen en la app (o con: carrusel.sh elegir <nombre> 2,4,5). Antes se paraba sin más.
-    mkdir -p "$OUT/_revisar"; local i=0; for f in "${FILES[@]}"; do i=$((i+1)); ajustar_4x5 "$f" "$OUT/_revisar/orden_$(printf '%02d' $i).png"; done
+    mkdir -p "$OUT/_revisar"; local i=0; for f in "${FILES[@]}"; do i=$((i+1)); ajustar_4x5 "$f" "$OUT/_revisar/orden_$(printf '%02d' $i).png" || echo "AVISO: la imagen $i de Codex no se pudo recortar ($f); no saldrá para elegir"; done
     # el log repite el prompt: solo cuenta lo que Codex escribió después de él
     local FINAL=$(sed 's/\x1b\[[0-9;]*m//g' "$LOG" 2>/dev/null | awk '/INSTRUCCIÓN TÉCNICA/{t=""; next} {t=t $0 "\n"} END{printf "%s", t}' | grep -oE 'FINAL: *[0-9 ,]+' | tail -1 | sed 's/FINAL: *//; s/ //g')
     if [ -n "$FINAL" ] && cmd_elegir "$nombre" "$FINAL" quieto; then
       echo "OK carrusel $nombre: $N/$N slides · Codex rehízo $((K-N)) y eligió $FINAL · tokens: $TOK · imágenes: $K · cuenta '$CUENTA': $(gastadas_24h) en 24 h"; return 0
     fi
     echo "SOBRAN: Codex generó $K imágenes para $N slides (rehízo alguna). Elige en la app cuál es la buena de cada slide."; exit 4; fi
-  local i=0; for f in "${FILES[@]}"; do i=$((i+1)); ajustar_4x5 "$f" "$OUT/_sin_pie/$i.png" || exit 1; estampar "$OUT" $i $N || exit 1; done
+  local i=0; for f in "${FILES[@]}"; do i=$((i+1))
+    ajustar_4x5 "$f" "$OUT/_sin_pie/$i.png" || { echo "FALLO: la imagen $i de Codex no se pudo recortar a 4:5 ($f)"; exit 1; }
+    estampar "$OUT" $i $N || { echo "FALLO: no se pudo estampar el pie del slide $i"; exit 1; }
+  done
   [ $LIM -eq 1 ] && { echo "LIMITE_DE_USO tras $i de $N slides · tokens: $TOK"; exit 2; }
   [ $i -lt $N ] && { echo "INCOMPLETO: $i/$N slides (codex exit $RC) · tokens: $TOK · ver $LOG"; exit 1; }
   cmd_revisar "$nombre"
@@ -225,7 +229,12 @@ cmd_corregir() {  # <nombre> <n> "<cambio>"
   anotar_cupo "$nombre" "slide_$n" "${#FILES}" "$TOK"
   [ ${#FILES} -eq 0 ] && { grep -q -i -E "usage limit|usage_limit_reached" "$LOG" && echo "LIMITE_DE_USO" || echo "FALLO slide $n (exit $RC) · ver $LOG"; exit 1; }
   cp "$OUT/_sin_pie/$n.png" "$OUT/_versiones/${n}_v$k.png"
-  ajustar_4x5 "${FILES[-1]}" "$OUT/_sin_pie/$n.png" && estampar "$OUT" $n $N && cmd_revisar "$nombre" >/dev/null
+  # si la imagen nueva no se puede recortar o estampar, se deja la anterior y se dice (antes respondía "OK" igualmente)
+  if ! { ajustar_4x5 "${FILES[-1]}" "$OUT/_sin_pie/$n.png" && estampar "$OUT" $n $N; }; then
+    cp "$OUT/_versiones/${n}_v$k.png" "$OUT/_sin_pie/$n.png"; estampar "$OUT" $n $N
+    echo "FALLO: Codex hizo la corrección del slide $n, pero no se pudo recortar o estampar (ver ${FILES[-1]}). El slide se queda como estaba."; exit 1
+  fi
+  cmd_revisar "$nombre" >/dev/null
   echo "OK slide $n corregido · tokens: $TOK · versión anterior en _versiones/${n}_v$k.png · cuenta '$CUENTA': $(gastadas_24h) en 24 h"
 }
 
@@ -234,7 +243,7 @@ cmd_elegir() {  # <nombre> <a,b,c> [quieto]: coloca las imágenes de _revisar/ c
   local nums=(${(s:,:)lista}); [ ${#nums} -eq $N ] || { echo "Hacen falta $N números (uno por slide) y llegaron ${#nums}: $lista"; return 1; }
   local k; for k in "${nums[@]}"; do [[ "$k" =~ '^[0-9]+$' ]] && [ -f "$OUT/_revisar/orden_$(printf '%02d' $k).png" ] || { echo "No existe la imagen $k en _revisar/"; return 1; }; done
   mkdir -p "$OUT/_sin_pie"; local i=0
-  for k in "${nums[@]}"; do i=$((i+1)); cp "$OUT/_revisar/orden_$(printf '%02d' $k).png" "$OUT/_sin_pie/$i.png" && estampar "$OUT" $i $N || return 1; done
+  for k in "${nums[@]}"; do i=$((i+1)); cp "$OUT/_revisar/orden_$(printf '%02d' $k).png" "$OUT/_sin_pie/$i.png" && estampar "$OUT" $i $N || { echo "FALLO: no se pudo colocar la imagen $k como slide $i"; return 1; }; done
   cmd_revisar "$nombre" >/dev/null
   [ "${3:-}" = "quieto" ] || echo "OK carrusel $nombre: slides elegidos $lista"
 }

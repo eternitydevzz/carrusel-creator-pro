@@ -26,10 +26,12 @@ codex() {  # <caso>: Codex simulado con su log y sus imágenes (lisas, de colore
   local sid=$(sed 's/\x1b\[[0-9;]*m//g' "$CODEX_SIMULADO" | grep -m1 "session id:" | awk '{print $3}') k
   local n=$(cat "$AQUI/codex/$1/imagenes"); [ -n "$sid" ] || sid=sin_sesion
   mkdir -p "$D/gen/$sid"
-  for k in $(seq 1 $n); do
+  for (( k = 1; k <= n; k++ )); do  # no seq: en Mac "seq 1 0" cuenta hacia atrás y daba 2 imágenes
     ffmpeg -loglevel error -y -f lavfi -i "color=c=0x$(printf '%02x%02x%02x' $(((k*29)%256)) 90 $(((250-k*23)%256))):s=1080x1350" -frames:v 1 "$D/gen/$sid/img_$k.png"
     touch -t "2026010112$(printf %02d $k)" "$D/gen/$sid/img_$k.png"
   done
+  # codex/<caso>/rota: número de la imagen que llega rota (no es una imagen)
+  if [ -f "$AQUI/codex/$1/rota" ]; then k=$(cat "$AQUI/codex/$1/rota"); echo "no es una imagen" > "$D/gen/$sid/img_$k.png"; touch -t "2026010112$(printf %02d $k)" "$D/gen/$sid/img_$k.png"; fi
 }
 slides() { ls "$P/salida/$1" 2>/dev/null | grep -cE '^[0-9]+\.png$'; }
 igual() { cmp -s "$1" "$2"; }
@@ -89,7 +91,17 @@ p_gen_limite() { original con_persona_3 3; codex limite; motor generar con_perso
 p_gen_sin_sesion() { original con_persona_3 3; codex sin_sesion; motor generar con_persona_3; [ $RC -ne 0 ] && [[ "$SALIDA" == *"sin session id"* ]]; }
 p_elegir_mal() { original con_persona_3 3; codex rehizo_sin_final; motor generar con_persona_3; motor elegir con_persona_3 2,9,4; [ $RC -ne 0 ] && [ "$(slides con_persona_3)" -eq 0 ]; }
 p_elegir_bien() { original con_persona_3 3; codex rehizo_sin_final; motor generar con_persona_3; motor elegir con_persona_3 2,4,5; [ $RC -eq 0 ] && [ "$(slides con_persona_3)" -eq 3 ]; }
+p_gen_imagen_rota() { original normal_8 9; codex normal_imagen_rota; motor generar normal_8; [ $RC -ne 0 ] && [[ "$SALIDA" == *"imagen 3 de Codex no se pudo recortar"* ]]; }
+tres_slides() { original con_persona_3 3; codex rehizo_con_final; motor generar con_persona_3; [ $RC -eq 0 ]; }
+p_corregir() { tres_slides && codex correccion && motor corregir con_persona_3 2 "sube el texto" && [ $RC -eq 0 ] && [ -f "$P/salida/con_persona_3/_versiones/2_v1.png" ] && ! igual "$P/salida/con_persona_3/_sin_pie/2.png" "$P/salida/con_persona_3/_versiones/2_v1.png"; }
+p_corregir_sin_imagen() { tres_slides && codex correccion_sin_imagen; motor corregir con_persona_3 2 "sube el texto"; [ $RC -ne 0 ] && [[ "$SALIDA" == *"FALLO slide 2"* ]]; }
+p_corregir_imagen_rota() { tres_slides && codex correccion_imagen_rota; motor corregir con_persona_3 2 "sube el texto"; local o="$P/salida/con_persona_3"
+  [ $RC -ne 0 ] && [[ "$SALIDA" == *"se queda como estaba"* ]] && igual "$o/_sin_pie/2.png" "$o/_versiones/2_v1.png" && [ -f "$o/2.png" ]; }
 prueba generar_normal "8 slides con su pie (log real del #12)" p_gen_normal
+prueba generar_imagen_rota "para diciendo qué imagen falló (antes, sin mensaje)" p_gen_imagen_rota
+prueba corregir_normal "corrige el slide 2 y guarda la versión anterior" p_corregir
+prueba corregir_sin_imagen "para con FALLO slide 2" p_corregir_sin_imagen
+prueba corregir_imagen_rota "para, lo dice y deja el slide como estaba (antes respondía OK)" p_corregir_imagen_rota
 prueba generar_codex_rehizo_sin_final "para con código 4 y deja las 5 imágenes para elegir (log real de Santo)" p_gen_rehizo_sin_final
 prueba generar_codex_rehizo_con_final "coloca solas las imágenes 2, 4 y 5" p_gen_rehizo_con_final
 prueba generar_final_solo_en_el_prompt "no elige nada solo: el FINAL del prompt no es la respuesta de Codex" p_gen_final_solo_en_prompt

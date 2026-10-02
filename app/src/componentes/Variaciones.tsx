@@ -1,5 +1,6 @@
 "use client";
 
+import { llamar, postJson } from "@/lib/llamar";
 import { useState } from "react";
 import { Check, Copy, Save } from "lucide-react";
 import { Aviso } from "@/componentes/ui";
@@ -22,9 +23,8 @@ export function Variaciones({ nombre, textos, recargar }: { nombre: string; text
   }
   async function guardar() {
     setAviso(null);
-    const r = await fetch(`/api/carrusel/${nombre}/accion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "guardar_variaciones", textos: actuales }) });
-    const res = await r.json();
-    if (!r.ok) { setAviso({ tono: "danger", texto: res.error ?? "No se pudo" }); return; }
+    const { ok, datos: res } = await llamar(`/api/carrusel/${nombre}/accion`, postJson({ accion: "guardar_variaciones", textos: actuales }));
+    if (!ok) { setAviso({ tono: "danger", texto: res.error ?? "No se pudo" }); return; }
     setSucio(false); setAviso({ tono: "ok", texto: "Variaciones guardadas." }); await recargar();
   }
   async function copiar(i: number) {

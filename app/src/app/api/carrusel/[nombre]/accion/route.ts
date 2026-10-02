@@ -55,7 +55,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ nombre:
   }
   if (a.accion === "cerrar") {
     const r = await motor(["cerrar", nombre], { timeoutMs: 300_000 });
-    return NextResponse.json({ ok: r.codigo === 0, texto: r.salida });
+    if (r.codigo !== 0) return NextResponse.json({ error: r.salida || "No se pudo cerrar el carrusel" }, { status: 500 });
+    return NextResponse.json({ ok: true, texto: r.salida });
   }
   if (a.accion === "elegir") {
     // Codex rehízo imágenes: la persona elige la buena de cada slide (números de _revisar/orden_NN.png, en orden de slide)
@@ -70,7 +71,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ nombre:
   }
   if (a.accion === "revisar") {
     const r = await motor(["revisar", nombre], { timeoutMs: 60_000 });
-    return NextResponse.json({ ok: r.codigo === 0, texto: r.salida });
+    if (r.codigo !== 0) return NextResponse.json({ error: r.salida || "No se pudo hacer la hoja de revisión" }, { status: 500 });
+    return NextResponse.json({ ok: true, texto: r.salida });
   }
   return NextResponse.json({ error: "Acción desconocida" }, { status: 400 });
 }

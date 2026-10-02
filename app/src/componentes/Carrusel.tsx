@@ -9,6 +9,7 @@ import { Descripcion } from "@/componentes/Descripcion";
 import { Visor } from "@/componentes/Visor";
 import { ElegirImagenes } from "@/componentes/ElegirImagenes";
 import type { Ficha, Slide } from "@/lib/motor";
+import { llamar, postJson } from "@/lib/llamar";
 
 type Datos = {
   nombre: string; fichaTexto: string; ficha: Ficha | null; comprobacion: { ok: boolean; texto: string } | null;
@@ -52,9 +53,9 @@ export function Carrusel({ nombre }: { nombre: string }) {
   const estabaEnCurso = useRef(false);
 
   const cargar = useCallback(async () => {
-    const r = await fetch(`/api/carrusel/${nombre}`, { cache: "no-store" });
-    if (!r.ok) return;
-    const datos = (await r.json()) as Datos;
+    const { ok, status, datos: res } = await llamar<Datos>(`/api/carrusel/${nombre}`, { cache: "no-store" });
+    if (!ok) { if (status === 0) setMensaje({ tono: "danger", texto: res.error ?? "No hay conexión con la app" }); return; }
+    const datos = res as Datos;
     setD(datos); setAhora(Date.now());
     if (cargaInicial.current || !sucia) { setFicha(datos.ficha); if (datos.ficha) cargaInicial.current = false; }
     const enCurso = datos.estado?.estado === "en_curso" || datos.estadoFicha?.estado === "en_curso";
@@ -88,8 +89,10 @@ export function Carrusel({ nombre }: { nombre: string }) {
     if (!ficha) return false;
     setGuardando(true);
     try {
-      const r = await fetch(`/api/carrusel/${nombre}/ficha`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ficha }) });
-      const res = await r.json(); setSucia(false);
+      const { ok, datos: res } = await llamar<{ ok: boolean; texto: string; ficha: Ficha }>(`/api/carrusel/${nombre}/ficha`, postJson({ ficha }, "PUT"));
+      // la comprobación con fallos también llega con 200 (ok: false y su texto); solo un error de la app trae status de error
+      if (!ok) { setMensaje({ tono: "danger", texto: res.error ?? "No se pudo guardar la ficha" }); return false; }
+      setSucia(false);
       setD((prev) => prev ? { ...prev, comprobacion: { ok: res.ok, texto: res.texto }, ficha: res.ficha } : prev);
       return !!res.ok;
     } finally { setGuardando(false); }
@@ -98,9 +101,8 @@ export function Carrusel({ nombre }: { nombre: string }) {
   async function accion(cuerpo: Record<string, unknown>) {
     setOcupado(true); setMensaje(null);
     try {
-      const r = await fetch(`/api/carrusel/${nombre}/accion`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(cuerpo) });
-      const res = await r.json();
-      if (!r.ok) setMensaje({ tono: "danger", texto: res.error ?? "No se pudo" });
+      const { ok, datos: res } = await llamar<{ ok?: boolean; texto?: string }>(`/api/carrusel/${nombre}/accion`, postJson(cuerpo));
+      if (!ok) setMensaje({ tono: "danger", texto: res.error ?? "No se pudo" });
       else if (res.texto) setMensaje({ tono: res.ok ? "ok" : "warn", texto: res.texto });
       await cargar();
     } finally { setOcupado(false); }
@@ -114,16 +116,15 @@ export function Carrusel({ nombre }: { nombre: string }) {
   }
 
   async function renombrar() {
-    const r = await fetch(`/api/carrusel/${nombre}/renombrar`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ nuevo: nuevoNombre }) });
-    const res = await r.json();
-    if (!r.ok) { setMensaje({ tono: "danger", texto: res.error }); setRenombrando(false); return; }
+    const { ok, datos: res } = await llamar<{ nombre: string }>(`/api/carrusel/${nombre}/renombrar`, postJson({ nuevo: nuevoNombre }));
+    if (!ok) { setMensaje({ tono: "danger", texto: res.error ?? "No se pudo cambiar el nombre" }); setRenombrando(false); return; }
     router.replace(`/carrusel/${res.nombre}`);
   }
 
   async function borrar() {
     if (!confirm(`¿Borrar el carrusel "${nombre}" con su ficha, su original y sus imágenes? No se puede deshacer.`)) return;
-    const r = await fetch(`/api/carrusel/${nombre}`, { method: "DELETE" });
-    if (!r.ok) { setMensaje({ tono: "danger", texto: (await r.json()).error }); return; }
+    const { ok, datos: res } = await llamar(`/api/carrusel/${nombre}`, { method: "DELETE" });
+    if (!ok) { setMensaje({ tono: "danger", texto: res.error ?? "No se pudo borrar" }); return; }
     router.push("/");
   }
 
@@ -210,6 +211,10 @@ export function Carrusel({ nombre }: { nombre: string }) {
       {/* si la primera generación falló, se dice aquí; antes la pantalla volvía a la ficha sin explicar nada (en revisión ya se avisa abajo) */}
       {d.estado?.estado === "error" && (fase === "ficha" || fase === "sin_ficha") && (
         <Aviso tono="danger"><div className="mb-1 font-semibold">{d.estado.orden[0] === "corregir" ? `La corrección del slide ${d.estado.orden[2]} falló` : "La generación falló"}</div><pre className="whitespace-pre-wrap font-sans">{d.estado.salida.trim().split("\n").slice(-4).join("\n")}</pre></Aviso>
+      )}
+
+      {fase === "ficha" && d.estadoFicha?.estado === "error" && (
+        <Aviso tono="danger"><div className="mb-1 font-semibold">No se pudo volver a redactar la ficha (se mantiene la anterior)</div><pre className="whitespace-pre-wrap font-sans">{d.estadoFicha.salida.trim().split("\n").slice(-4).join("\n")}</pre></Aviso>
       )}
 
       {(fase === "ficha" || (fase === "sin_ficha" && ficha)) && ficha && (

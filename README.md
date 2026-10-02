@@ -21,13 +21,15 @@ No es solo poner unas claves. La app depende de cosas que solo hay en un Mac: el
 
 ## Instalar
 
+El repositorio es privado: necesitas que te inviten y entrar en GitHub con tu cuenta (la primera vez, `git` te pedirá iniciar sesión; también vale `gh auth login`).
+
 ```bash
-git clone <este repositorio> carrusel-creator-pro
+git clone https://github.com/CristianortizKing/carrusel-creator-pro.git
 cd carrusel-creator-pro
 ./instalar.sh
 ```
 
-El instalador pone Node, ffmpeg y exiftool con Homebrew, instala Codex CLI si no está, y las dependencias de la app. Al terminar te dice cómo arrancar.
+El instalador pone Node (20 o más), ffmpeg y exiftool con Homebrew, instala Codex CLI (versión probada) y Claude Code si no están, y las dependencias de la app. Al terminar te dice cómo arrancar.
 
 ## Arrancar
 
@@ -35,7 +37,7 @@ El instalador pone Node, ffmpeg y exiftool con Homebrew, instala Codex CLI si no
 ./arrancar.sh
 ```
 
-Abre `http://localhost:3000`. La primera vez sale la **bienvenida**: un formulario de 11 pasos (unos 3 minutos) que deja todo configurado: tu nombre, tu @, el color, a quién le hablas, el lema del pie, tus fotos, la referencia de estilo, la ropa, la clave de ScrapeCreators, la comprobación de Codex y Claude Code, y la ubicación de los metadatos. Se repite desde **Ajustes → Repetir bienvenida**, y todo se puede cambiar después en **Branding** y **Ajustes**.
+Abre `http://localhost:3000`. La primera vez sale la **bienvenida**: un formulario de 11 pasos (unos 3 minutos) que deja todo configurado: tu nombre, tu @, el color, a quién le hablas, el lema del pie, tus fotos (de 1 a 3), tus referencias de estilo (de 1 a 3), la ropa, la clave de ScrapeCreators, la comprobación de Codex y Claude Code, y la ubicación de los metadatos. Se repite desde **Ajustes → Repetir bienvenida**, y todo se puede cambiar después en **Branding** y **Ajustes**.
 
 Si Codex no está conectado, la bienvenida te da la orden exacta para la Terminal (`codex login`).
 
@@ -101,9 +103,9 @@ El motor se puede usar solo, sin la interfaz: `motor/carrusel.sh` sin argumentos
 
 - No acelera a Codex: cada carrusel tarda de 5 a 12 minutos.
 - No publica en Instagram.
-- No funciona sin Mac, sin Codex conectado ni sin clave de ScrapeCreators.
+- No funciona sin Mac ni sin Codex conectado. Sin clave de ScrapeCreators no se pueden copiar carruseles virales (con tu propio guion, sí).
 - No sustituye tu ojo: hay que mirar el resultado antes de cerrar.
 
 ## Metadatos
 
-Al cerrar, cada imagen se recodifica como JPEG y se le borran todos los metadatos, incluido el manifiesto de contenido de AI que añade el generador. Como único dato se escribe una ubicación (por defecto Newark, New Jersey; se cambia en Ajustes). La marca de agua invisible en los píxeles se degrada con la recodificación, pero no hay forma de confirmar que desaparece. Úsalo bajo tu criterio y el de las normas de la plataforma donde publiques.
+Al cerrar, cada imagen se recodifica como JPEG y se le borran todos los metadatos, incluido el manifiesto de contenido de AI que añade el generador. Como único dato se escribe una ubicación (por defecto Newark, New Jersey; cada cliente tiene la suya y se cambia en Branding). La marca de agua invisible en los píxeles se degrada con la recodificación, pero no hay forma de confirmar que desaparece. Úsalo bajo tu criterio y el de las normas de la plataforma donde publiques.

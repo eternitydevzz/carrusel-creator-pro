@@ -16,6 +16,7 @@
 #   carrusel.sh cupo                                imágenes gastadas en 24 h por la cuenta actual
 #
 # Variables opcionales:  ENSAYO=1 (no llama a Codex)   FORZAR=1 (salta el cupo)   RECOGER_SID=<id> (recoge una sesión ya hecha)
+#                        Pruebas sin gasto: SC_RESPUESTA, SC_SIN_IMAGENES, CODEX_SIMULADO, GEN (ver motor/pruebas/correr.sh)
 #                        PERFIL=<cliente> (por defecto, el cliente activo en la app)
 set -u
 AQUI="${0:A:h}"
@@ -88,6 +89,8 @@ refs_marca() {  # rutas completas de las fotos de la marca, en orden
 llamar_codex() {  # <carpeta_trabajo> <prompt> <log> <ref>...  → escribe el log; devuelve el código de salida de codex
   local dir="$1" prompt="$2" log="$3"; shift 3
   local IMGS=(); for f in "$@"; do [ -f "$f" ] || { echo "FALTA_REFERENCIA: $f · Sube tus fotos y la referencia de estilo en Branding antes de generar."; return 5; }; IMGS+=(-i "${f:A}"); done
+  # pruebas sin gasto: CODEX_SIMULADO=<log guardado> hace de Codex (con GEN apuntando a las imágenes de esa sesión)
+  if [ -n "${CODEX_SIMULADO:-}" ]; then cp "$CODEX_SIMULADO" "$log"; return ${CODEX_SIMULADO_RC:-0}; fi
   if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Codex. Prompt: $prompt · Referencias:"; printf '  %s\n' "${IMGS[@]}" | grep -v '^  -i$'; return 0; fi
   # El prompt entra por stdin. No se pone "-" al final: -i lo leería como una imagen.
   cat "$prompt" | codex exec --ephemeral --ignore-user-config --skip-git-repo-check -s read-only -C "$dir" \
@@ -100,38 +103,9 @@ cab() { grep -m1 "^$2:" "$(ficha_de "$1")" | cut -d: -f2- | sed 's/^ *//'; }
 cmd_bajar() {  # <url> <nombre>
   local url="$1" nombre="$2"; local dest="$VIRALES/$nombre"
   local key="${SCRAPECREATORS_API_KEY:-$(grep -m1 SCRAPECREATORS_API_KEY ~/.config/last30days/.env 2>/dev/null | cut -d= -f2- | tr -d '"')}"
-  [ -n "$key" ] || { echo "Falta SCRAPECREATORS_API_KEY"; exit 1; }
+  [ -n "$key" ] || [ -n "${SC_RESPUESTA:-}" ] || { echo "Falta SCRAPECREATORS_API_KEY"; exit 1; }
   mkdir -p "$dest"
-  SC_KEY="$key" python3 - "$url" "$dest" <<'EOF'
-import json, os, sys, urllib.request, urllib.parse
-url, dest = sys.argv[1], sys.argv[2]
-k = os.environ["SC_KEY"]
-q = urllib.parse.urlencode({"url": url, "include_play_count": "false"})
-r = urllib.request.Request("https://api.scrapecreators.com/v1/instagram/post?" + q, headers={"x-api-key": k})
-d = json.load(urllib.request.urlopen(r, timeout=120)); d = d.get("data") or d
-m = d.get("xdt_shortcode_media") or {}
-if not m: raise SystemExit("La API no devolvió el post: " + str(d)[:300])
-kids = [e["node"] for e in m.get("edge_sidecar_to_children", {}).get("edges", [])] or [m]
-def bajar(u, p):
-    rq = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
-    with urllib.request.urlopen(rq, timeout=120) as s, open(p, "wb") as f: f.write(s.read())
-n = 0; videos = []
-for i, kd in enumerate(kids, 1):
-    # los slides de vídeo también cuentan: se baja su portada (la imagen que enseña Instagram antes de reproducirlo).
-    # Antes se saltaban y un carrusel de 6 con 3 vídeos se quedaba en 3 slides (01, 04, 06), sin avisar.
-    res = sorted(kd.get("display_resources") or [], key=lambda x: x.get("config_width", 0))
-    src = res[-1]["src"] if res else kd.get("display_url")
-    if not src: print(f"AVISO: el slide {i} no trae imagen; se omite"); continue
-    bajar(src, f"{dest}/slide_{i:02d}.jpg"); n += 1
-    if kd.get("is_video"): videos.append(i)
-cap = (m.get("edge_media_to_caption", {}).get("edges") or [{}])[0].get("node", {}).get("text", "")
-user = (m.get("owner") or {}).get("username", "")
-likes = (m.get("edge_media_preview_like") or {}).get("count", "")
-com = (m.get("edge_media_to_parent_comment") or m.get("edge_media_preview_comment") or {}).get("count", "")
-nota = f"Slides de vídeo (se usa su portada): {', '.join(map(str, videos))}\n" if videos else ""
-open(f"{dest}/info.txt", "w").write(f"URL: {url}\nCuenta: @{user}\nComentarios: {com}\nLikes: {likes}\nSlides: {n}\n{nota}\nTexto:\n{cap}\n")
-print(f"{n} slides descargados en {dest}" + (f" ({len(videos)} de vídeo: se usa su portada)" if videos else ""))
-EOF
+  SC_KEY="$key" python3 "$AQUI/bajar.py" "$url" "$dest" || exit 1
   for f in "$dest"/slide_*.jpg; do sips -s format jpeg "$f" --out "$f" >/dev/null 2>&1; done
   echo "Siguiente paso: mirar los slides, escribir virales/$nombre/descripcion.md y la ficha (carrusel.sh nueva $nombre <N>)."
 }

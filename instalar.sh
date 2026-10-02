@@ -43,3 +43,4 @@ if codex login status 2>&1 | grep -qi "logged in"; then echo "  ✓ Codex conect
 echo
 echo "Listo. Arranca con:  ./arrancar.sh   (se abre sola en http://carrusel.localhost:3000)"
 echo "Primera vez: entra en Claude Code con  claude  , y en la app: Ajustes (clave de ScrapeCreators) y Branding (tus fotos y tu marca)."
+echo "Opcional: instala la app desde Chrome y ejecuta  ./crear-lanzador.sh  para abrirla desde el Dock sin Terminal (enciende y apaga el servidor solo)."

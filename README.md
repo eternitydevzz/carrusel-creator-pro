@@ -31,6 +31,8 @@ cd carrusel-creator-pro
 
 El instalador pone Node (20 o más), ffmpeg y exiftool con Homebrew, instala Codex CLI (versión probada) y Claude Code si no están, y las dependencias de la app. Al terminar te dice cómo arrancar.
 
+**Lo más fácil: que la instale tu Claude.** Abre Claude Code dentro de la carpeta (`cd carrusel-creator-pro` y `claude`) y dile *"instálame esta app"*. Sigue los pasos de `CLAUDE.md`: ejecuta el instalador, te dice qué tienes que hacer tú (por ejemplo `codex login`) y al final te pregunta si quieres el icono en el Dock que enciende y apaga el servidor solo.
+
 ## Arrancar
 
 ```bash
@@ -42,6 +44,22 @@ Se abre sola en **`http://carrusel.localhost:3000`** (los nombres `*.localhost` 
 ### Instalarla como app (recomendado)
 
 En Chrome, con la app abierta, pulsa el icono de **Instalar** de la barra de direcciones (o menú ⋮ → *Transmitir, guardar y compartir* → *Instalar página como aplicación*). Queda en el Dock y en Launchpad como **Carrusel Creator Pro**, con el logo de Código MaestrIA y su propia ventana, sin pestañas ni dirección. A partir de entonces, `./arrancar.sh` abre directamente esa ventana. Sigue siendo la misma app: necesita `./arrancar.sh` en marcha.
+
+### Abrirla sin Terminal: el servidor se enciende y se apaga solo
+
+Con la app ya instalada desde Chrome, ejecuta una vez:
+
+```bash
+./crear-lanzador.sh
+```
+
+Crea el icono **Carrusel Creator Pro** en tu carpeta Aplicaciones (`~/Applications`), con el logo de Código MaestrIA. Arrástralo al Dock y quita el que instaló Chrome (clic derecho → Opciones → Quitar del Dock). Desde entonces:
+
+- **Al abrirlo** se enciende el servidor y se abre la app (unos segundos la primera vez).
+- **Al cerrar la app** (con la X o con Cmd+Q) el servidor se apaga solo. Solo apaga el servidor que encendió él: si lo arrancaste a mano con `./arrancar.sh`, no lo toca.
+- Mientras está abierta verás dos iconos de Código MaestrIA en el Dock: el del lanzador y el de la ventana. Es normal.
+- En Spotlight saldrán dos "Carrusel Creator Pro": el de la carpeta *Chrome Apps* abre la app sin encender el servidor. Usa el del Dock.
+- Si algo falla, el registro está en `~/Library/Logs/carrusel-creator-pro.log`. Si mueves la carpeta del repositorio, vuelve a ejecutar `./crear-lanzador.sh`. Para quitarlo: `./crear-lanzador.sh --quitar`.
 
 ### Primera vez
 

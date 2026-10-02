@@ -27,11 +27,15 @@ export async function POST(req: Request) {
   let nombre = (p.nombre ?? "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
   if (p.modo === "link") {
     const url = (p.url ?? "").trim();
-    if (!/instagram\.com\/(p|reel)\//.test(url)) return NextResponse.json({ error: "Pega un link de un post o reel de Instagram" }, { status: 400 });
+    if (!/instagram\.com\/(p|reels?|tv)\//.test(url)) return NextResponse.json({ error: "Pega el link de un carrusel de Instagram (https://www.instagram.com/p/…)" }, { status: 400 });
+    // un reel se ve en el link: se avisa sin llamar a ScrapeCreators (no gasta crédito)
+    if (/instagram\.com\/(reels?|tv)\//.test(url)) return NextResponse.json({ error: "Ese link es de un reel, no de un carrusel. Pega el link de un post con varios slides.", noEsCarrusel: true }, { status: 400 });
     nombre = nombre || nombreDesdeUrl(url) || "";
     if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
     if (await existe(path.join(cliente(), "virales", nombre))) return NextResponse.json({ error: `Ya existe un carrusel llamado ${nombre}` }, { status: 409 });
     const r = await motor(["bajar", url, nombre], { timeoutMs: 180_000 });
+    // 6 = foto suelta o vídeo: solo se sabe después de preguntar a ScrapeCreators (gasta 1 crédito)
+    if (r.codigo === 6) return NextResponse.json({ error: (r.salida.match(/NO_ES_CARRUSEL: (.*)/)?.[1] ?? "Ese link no es de un carrusel.").trim(), noEsCarrusel: true }, { status: 400 });
     if (r.codigo !== 0) return NextResponse.json({ error: r.salida || "No se pudo descargar el carrusel" }, { status: 500 });
     if (p.redactar !== false) await motorFondo(["ficha_ia", nombre], path.join(cliente(), "virales", nombre, "_estado_ficha.json"));
     return NextResponse.json({ ok: true, nombre, salida: r.salida });

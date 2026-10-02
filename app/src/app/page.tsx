@@ -16,8 +16,15 @@ export default function Inicio() {
   const [redactar, setRedactar] = useState(true);
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState("");
+  const [noEsCarrusel, setNoEsCarrusel] = useState(""); // texto de la ventana "Esto no es un carrusel"
   const [lista, setLista] = useState<Resumen[]>([]);
   const [faltan, setFaltan] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!noEsCarrusel) return;
+    const tecla = (e: KeyboardEvent) => { if (e.key === "Escape") setNoEsCarrusel(""); };
+    window.addEventListener("keydown", tecla); return () => window.removeEventListener("keydown", tecla);
+  }, [noEsCarrusel]);
 
   useEffect(() => {
     fetch("/api/carruseles").then((r) => r.json()).then(setLista).catch(() => {});
@@ -36,7 +43,7 @@ export default function Inicio() {
     try {
       const r = await fetch("/api/nuevo", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ modo, url, nombre, guion, redactar }) });
       const d = await r.json();
-      if (!r.ok) { setError(d.error ?? "No se pudo crear"); return; }
+      if (!r.ok) { if (d.noEsCarrusel) setNoEsCarrusel(d.error); else setError(d.error ?? "No se pudo crear"); return; }
       router.push(`/carrusel/${d.nombre}`);
     } catch { setError("No hay conexión con la app"); } finally { setOcupado(false); }
   }
@@ -100,6 +107,15 @@ export default function Inicio() {
           </div>
         )}
       </section>
+      {noEsCarrusel && (
+        <div className="telon fixed inset-0 z-50 grid place-items-center p-4" onClick={() => setNoEsCarrusel("")}>
+          <div className="modal aparece w-full max-w-md p-6" onClick={(e) => e.stopPropagation()} role="alertdialog" aria-modal="true" aria-labelledby="titulo-no-carrusel" aria-describedby="texto-no-carrusel">
+            <h3 id="titulo-no-carrusel" className="mb-2 text-[18px] font-semibold">Esto no es un carrusel</h3>
+            <p id="texto-no-carrusel" className="mb-5 text-[14px]" style={{ color: "var(--fg-muted)" }}>{noEsCarrusel}</p>
+            <div className="flex justify-end"><button className="boton boton-primario" autoFocus onClick={() => setNoEsCarrusel("")}>Entendido</button></div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

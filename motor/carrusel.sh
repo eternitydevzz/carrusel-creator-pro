@@ -104,8 +104,9 @@ cmd_bajar() {  # <url> <nombre>
   local url="$1" nombre="$2"; local dest="$VIRALES/$nombre"
   local key="${SCRAPECREATORS_API_KEY:-$(grep -m1 SCRAPECREATORS_API_KEY ~/.config/last30days/.env 2>/dev/null | cut -d= -f2- | tr -d '"')}"
   [ -n "$key" ] || [ -n "${SC_RESPUESTA:-}" ] || { echo "Falta SCRAPECREATORS_API_KEY"; exit 1; }
-  mkdir -p "$dest"
-  SC_KEY="$key" python3 "$AQUI/bajar.py" "$url" "$dest" || exit 1
+  mkdir -p "$VIRALES"
+  # bajar.py deja la carpeta solo si bajan todos los slides; 6 = no es un carrusel (la app enseña una ventana)
+  SC_KEY="$key" python3 "$AQUI/bajar.py" "$url" "$dest"; local rc=$?; [ $rc -eq 0 ] || exit $rc
   for f in "$dest"/slide_*.jpg; do sips -s format jpeg "$f" --out "$f" >/dev/null 2>&1; done
   echo "Siguiente paso: mirar los slides, escribir virales/$nombre/descripcion.md y la ficha (carrusel.sh nueva $nombre <N>)."
 }

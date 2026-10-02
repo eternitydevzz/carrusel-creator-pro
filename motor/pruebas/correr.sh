@@ -45,8 +45,8 @@ prueba() {  # <nombre> <qué se espera> <función>
 bajar() { SC_RESPUESTA="$1" SC_SIN_IMAGENES=1 motor bajar "${2:-https://www.instagram.com/p/PRUEBA/}" orig; }
 p_bajar_videos() { bajar "$AQUI/scrapecreators/carrusel_con_videos.json"; [ $RC -eq 0 ] && [ "$(ls $P/virales/orig | grep -c '^slide_')" -eq 6 ] && [ -f "$P/virales/orig/slide_06.jpg" ]; }
 p_bajar_fotos() { bajar "$AQUI/scrapecreators/carrusel_solo_fotos.json"; [ $RC -eq 0 ] && [ "$(ls $P/virales/orig | grep -c '^slide_')" -eq 7 ]; }
-p_bajar_foto_suelta() { bajar "$AQUI/scrapecreators/foto_suelta.json"; [ $RC -ne 0 ] && [[ "$SALIDA" == *NO_ES_CARRUSEL* ]] && [ "$(ls $P/virales/orig 2>/dev/null | grep -c '^slide_')" -eq 0 ]; }
-p_bajar_reel() { bajar "$AQUI/scrapecreators/reel.json" "https://www.instagram.com/reel/PRUEBA/"; [ $RC -ne 0 ] && [[ "$SALIDA" == *NO_ES_CARRUSEL* ]]; }
+p_bajar_foto_suelta() { bajar "$AQUI/scrapecreators/foto_suelta.json"; [ $RC -eq 6 ] && [[ "$SALIDA" == *NO_ES_CARRUSEL* ]] && [ "$(ls $P/virales/orig 2>/dev/null | grep -c '^slide_')" -eq 0 ]; }
+p_bajar_reel() { bajar "$AQUI/scrapecreators/reel.json" "https://www.instagram.com/reel/PRUEBA/"; [ $RC -eq 6 ] && [[ "$SALIDA" == *NO_ES_CARRUSEL* ]] && [ ! -e "$P/virales/orig" ]; }
 p_bajar_error_api() { echo '{"success":false,"error":"Post no encontrado"}' > "$D/r.json"; bajar "$D/r.json"; [ $RC -ne 0 ] && [[ "$SALIDA" == *"no devolvió"* ]]; }
 p_bajar_slide_sin_imagen() {  # un slide sin imagen: se para, no deja un carrusel a medias
   python3 - "$AQUI/scrapecreators/carrusel_con_videos.json" "$D/r.json" <<'PY'
@@ -55,14 +55,28 @@ d=json.load(open(sys.argv[1])); m=(d.get("data") or d)["xdt_shortcode_media"]
 n=m["edge_sidecar_to_children"]["edges"][3]["node"]; n.pop("display_resources",None); n.pop("display_url",None)
 json.dump(d,open(sys.argv[2],"w"))
 PY
-  bajar "$D/r.json"; [ $RC -ne 0 ] && [ "$(ls $P/virales/orig 2>/dev/null | grep -c '^slide_')" -eq 0 ]
+  bajar "$D/r.json"; [ $RC -ne 0 ] && [[ "$SALIDA" == *FALTA_SLIDE* ]] && [ ! -e "$P/virales/orig" ]
 }
+fallo_en_slide_3() {  # imágenes locales (sin red) y la del slide 3 no existe: la descarga falla a mitad
+  python3 - "$AQUI/scrapecreators/carrusel_con_videos.json" "$D/r.json" "$AQUI/slide_prueba.jpg" <<'PY'
+import json,sys
+d=json.load(open(sys.argv[1])); m=(d.get("data") or d)["xdt_shortcode_media"]
+for k,e in enumerate(m["edge_sidecar_to_children"]["edges"],1):
+    n=e["node"]; n.pop("display_resources",None); n["display_url"]="file://"+(sys.argv[3] if k!=3 else "/no/existe.jpg")
+json.dump(d,open(sys.argv[2],"w"))
+PY
+  SC_RESPUESTA="$D/r.json" motor bajar https://www.instagram.com/p/PRUEBA/ orig
+}
+p_bajar_falla_a_mitad() { fallo_en_slide_3; [ $RC -ne 0 ] && [[ "$SALIDA" == *FALLO_DESCARGA* ]] && [ ! -e "$P/virales/orig" ] && [ ! -e "$P/virales/orig.bajando" ]; }
+p_bajar_reintento() { fallo_en_slide_3; bajar "$AQUI/scrapecreators/carrusel_con_videos.json"; [ $RC -eq 0 ] && [ "$(ls $P/virales/orig | grep -c '^slide_')" -eq 6 ]; }
 prueba bajar_carrusel_con_videos "6 de 6 slides (3 de vídeo, con su portada)" p_bajar_videos
 prueba bajar_carrusel_solo_fotos "7 de 7 slides" p_bajar_fotos
 prueba bajar_foto_suelta "para con NO_ES_CARRUSEL y no baja nada" p_bajar_foto_suelta
 prueba bajar_reel "para con NO_ES_CARRUSEL" p_bajar_reel
 prueba bajar_error_de_la_api "para con un mensaje (antes terminaba como si hubiera ido bien)" p_bajar_error_api
 prueba bajar_slide_sin_imagen "para sin dejar un carrusel a medias" p_bajar_slide_sin_imagen
+prueba bajar_falla_una_imagen_a_mitad "para con FALLO_DESCARGA y no deja nada" p_bajar_falla_a_mitad
+prueba bajar_reintento_tras_un_fallo "el segundo intento baja los 6 (antes: \"Ya existe\")" p_bajar_reintento
 
 # ---------- generación (fase 2) ----------
 p_gen_normal() { original normal_8 9; codex normal; motor generar normal_8; [ $RC -eq 0 ] && [ "$(slides normal_8)" -eq 8 ]; }

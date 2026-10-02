@@ -1,0 +1,65 @@
+carrusel: santo_prueba_real
+slides: 6
+cta: ORO
+viral: /Users/cristianortiz/PROYECTOS/GENERAL/carrusel-creator-pro/datos/perfiles/santo/virales/santo_prueba_real
+bandera: si
+
+## 1
+titular: "OPENAI DEJA A CUALQUIERA" / "GANAR $5,000 AL MES"
+azul: GANAR $5,000 AL MES
+debajo: "Roba este sistema gratis y ponlo a trabajar para tu empresa."
+idea: Portada con gancho de dinero: un hombre vacía un saco lleno de billetes sobre una mascota de peluche naranja, sobre un montón de dólares y con fondo negro. Promete un sistema gratis para ganar dinero con OpenAI.
+texto_escena: ninguno
+personaje: si
+manos: vacía un saco de billetes con ambas manos
+expresion: sonrisa pícara, mirada abajo
+
+## 2
+titular: "1. CHATGPT YA VENDE POR TI"
+azul: VENDE POR TI
+debajo: "ChatGPT recomienda apps en plena conversación a 1.200 millones de personas a la semana."
+idea: Paso 1: en el OpenAI DevDay del 29 de septiembre, los plugins pasaron a ser apps completas dentro de ChatGPT, y ChatGPT las recomienda en mitad de la conversación. Foto de un presentador en un escenario, frente a una gran pantalla con tarjetas de apps.
+texto_escena: "Paso 1 · OpenAI DevDay, 29 sep", "Construye tu producto", "Tableros financieros", "Reservas de eventos", "Seguimiento de proyectos", "Planificadores de presupuesto", "Juego multijugador", "Audiencia: 1.200 M a la semana", "Lanzado: 29 sep"
+personaje: si
+manos: presenta con la mano abierta
+expresion: seguro, mirada al público
+
+## 3
+titular: "2. LA GENTE YA LOS CONSTRUYE"
+azul: YA LOS CONSTRUYE
+debajo: "Editor de vídeo, estudio de imagen, diseño 3D y planificador: todo corre dentro de ChatGPT."
+idea: Paso 2: ya hay plugins reales funcionando. Cuenta que existen un editor de vídeo, un estudio de imagen y vídeo, una herramienta de diseño 3D, un creador de escenas de película y una app de planificación, y que todos funcionan dentro de ChatGPT. La AI escribe el código.
+texto_escena: "Paso 2 · plugins reales, ya disponibles", "Mostrados: 5 plugins", "Código: lo escribe la AI"
+personaje: no
+manos:
+expresion:
+
+## 4
+titular: "3. TODAS LAS MARCAS QUIEREN ENTRAR"
+azul: QUIEREN ENTRAR
+debajo: "ChatGPT ya les manda clientes. La mayoría de empresas no sabe cómo llegar ahí."
+idea: Paso 3: las grandes herramientas corren a entrar en el directorio de plugins de ChatGPT porque les trae clientes. Muestra la pantalla del directorio de plugins con la categoría Creatividad y la lista de herramientas.
+texto_escena: "Paso 3 · todas las marcas quieren entrar", "Plugins", "Creatividad", "Higgsfield", "Runway", "OpenArt", "Figma", "Product Design", "invideo", "Directorio: abierto ya", "Etapa: día uno"
+personaje: no
+manos:
+expresion:
+
+## 5
+titular: "4. ESTO ES LO QUE PAGA"
+azul: LO QUE PAGA
+debajo: "Un fundador llegó a $10K al mes en 3 semanas. Otra suma 10,000 usuarios nuevos por semana."
+idea: Paso 4: la prueba de que paga. Un fundador llegó a $10K MRR en 3 semanas gracias a que lo descubrieron por los plugins de ChatGPT, y otra herramienta consigue 10,000 usuarios nuevos a la semana. Se ven publicaciones de X como prueba.
+texto_escena: "Paso 4 · cobrar", "$10K MRR en 3 semanas gracias a los plugins de ChatGPT", "Ingresos: $10K al mes", "Usuarios nuevos: 10K a la semana"
+personaje: no
+manos:
+expresion:
+
+## 6
+titular: "COMENTA ORO" / "Y TE ENVÍO" / "MI GUÍA GRATIS"
+azul: MI GUÍA GRATIS
+debajo: "Cómo crear la tuya con Claude y llevarla hasta tu primer cliente, sea empresa o gobierno."
+idea: Cierre con CTA: pide comentar una palabra para recibir gratis la guía completa, que explica cómo construir el primer plugin con Claude y cómo conseguir el primer cliente que pague. Solo texto grande sobre fondo crema con cuadrícula y un icono de marcador.
+texto_escena: ninguno
+personaje: no
+manos:
+expresion:

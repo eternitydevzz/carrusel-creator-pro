@@ -119,24 +119,36 @@ cmd_ficha_ia() {  # <nombre>: Claude Code (con la sesión del usuario) redacta l
   [ -d "$V" ] || { echo "No existe el original en $V. Primero: carrusel.sh bajar <url> $nombre"; exit 1; }
   local N=$(ls "$V" | grep -c -E '^slide_[0-9]+\.jpg$'); [ "$N" -gt 0 ] || { echo "No hay slides en $V"; exit 1; }
   local CLAUDE="$(command -v claude || true)"; [ -z "$CLAUDE" ] && [ -x "$HOME/.local/bin/claude" ] && CLAUDE="$HOME/.local/bin/claude"
-  [ -n "$CLAUDE" ] || { echo "Falta Claude Code. Instálalo (npm install -g @anthropic-ai/claude-code) y entra con: claude"; exit 1; }
+  [ -n "$CLAUDE" ] || [ -n "${CLAUDE_SIMULADO:-}" ] || { echo "Falta Claude Code. Instálalo (npm install -g @anthropic-ai/claude-code) y entra con: claude"; exit 1; }
   local IDIOMA="$(dato idioma)"; local ANGULO="$(dato angulo)"
   local P="$V/_prompt_ficha.txt"
   sed -e "s|{HANDLE}|$PIE_HANDLE|g" -e "s|{ANGULO}|$ANGULO|g" -e "s|{IDIOMA}|${IDIOMA:-español}|g" -e "s|{NOMBRE}|$nombre|g" -e "s|{N}|$N|g" -e "s|{VIRAL}|$V|g" "$AQUI/PROMPT_FICHA.txt" > "$P"
-  { cat "$P"; echo; echo "Los slides del carrusel original están en estos archivos, en orden. Ábrelos con la herramienta Read y lee con cuidado todo su texto (nombres, cifras y pasos tienen que ser exactos) antes de escribir la ficha:"; for f in "$V"/slide_*.jpg; do echo "${f:A}"; done; echo; echo "Responde SOLO con la ficha, sin explicaciones ni marcas de código."; } > "$V/_prompt_ficha_enviado.txt"
+  { cat "$P"; echo; echo "Los slides del carrusel original están en estos archivos, en orden. Ábrelos con la herramienta Read y lee con cuidado todo su texto (nombres, cifras y pasos tienen que ser exactos) antes de escribir la ficha:"; for f in "$V"/slide_*.jpg; do echo "${f:A}"; done; echo; echo "Responde SOLO con la ficha y, al final, la sección === TEXTO DEL ORIGINAL ===, sin explicaciones ni marcas de código."; } > "$V/_prompt_ficha_enviado.txt"
   mkdir -p "$V/_logs"; local LOG=$(siguiente_log "$V" ficha)
   if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Claude. Prompt: $V/_prompt_ficha_enviado.txt"; exit 0; fi
-  "$CLAUDE" -p --allowedTools "Read" --output-format text < "$V/_prompt_ficha_enviado.txt" > "$LOG" 2>"$LOG.err"; local RC=$?
+  # pruebas sin gasto: CLAUDE_SIMULADO=<respuesta guardada> hace de Claude
+  if [ -n "${CLAUDE_SIMULADO:-}" ]; then cp "$CLAUDE_SIMULADO" "$LOG"; : > "$LOG.err"; local RC=0
+  else "$CLAUDE" -p --allowedTools "Read" --output-format text < "$V/_prompt_ficha_enviado.txt" > "$LOG" 2>"$LOG.err"; local RC=$?; fi
   [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
-  python3 - "$LOG" "$F" <<'PY'
+  python3 - "$LOG" "$F" "$V/texto_original.md" "$V" <<'PY'
 import sys,re
 t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
 t=re.sub(r"```\w*","",t)
 i=t.find("carrusel:")
 if i<0: raise SystemExit("Claude no devolvió una ficha. Ver "+sys.argv[1])
 t=t[i:].strip()
-open(sys.argv[2],"w",encoding="utf-8").write(t+"\n")
-print("Ficha escrita en",sys.argv[2],"·",t.count("\n## "),"slides")
+# el texto literal del original va aparte, junto a sus slides: la comprobación saca de ahí las cifras que solo
+# se leen dentro de las imágenes (antes solo tenía el pie del post y los perfiles nuevos no podían generar)
+ficha, _, original = t.partition("=== TEXTO DEL ORIGINAL ===")
+ficha = ficha.strip()
+# la ruta del original la pone el motor, no Claude (podría copiarla mal y la comprobación leería otra carpeta)
+ficha = re.sub(r"^viral:.*$", lambda _: "viral: " + sys.argv[4], ficha, count=1, flags=re.M)
+open(sys.argv[2],"w",encoding="utf-8").write(ficha+"\n")
+if original.strip():
+    open(sys.argv[3],"w",encoding="utf-8").write("# Texto de los slides del original (lo copia Claude al redactar la ficha)\n\n"+original.strip()+"\n")
+else:
+    print("AVISO: Claude no copió el texto del original; las cifras que solo están en las imágenes saldrán como no encontradas")
+print("Ficha escrita en",sys.argv[2],"·",ficha.count("\n## "),"slides")
 PY
   [ $? -eq 0 ] || exit 1
   anotar_cupo "$nombre" ficha_ia 0 "claude"

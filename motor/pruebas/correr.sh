@@ -110,6 +110,22 @@ prueba generar_sin_sesion "para con un mensaje" p_gen_sin_sesion
 prueba elegir_numeros_malos "rechaza 2,9,4 sin tocar nada" p_elegir_mal
 prueba elegir_2_4_5 "3 slides con su pie" p_elegir_bien
 
+# ---------- ficha y cifras (perfiles nuevos) ----------
+ficha_ia_con() {  # el original se baja con la respuesta guardada (trae el pie del post en info.txt, como en la app)
+  SC_RESPUESTA="$AQUI/scrapecreators/carrusel_con_videos.json" SC_SIN_IMAGENES=1 motor bajar https://www.instagram.com/p/PRUEBA/ santo_prueba_real; CLAUDE_SIMULADO="$AQUI/claude/$1/respuesta.txt" motor ficha_ia santo_prueba_real; }
+p_ficha_texto() { ficha_ia_con ficha_con_texto; [ $RC -eq 0 ] && grep -q "1.2B a week" "$P/virales/santo_prueba_real/texto_original.md" && ! grep -q "TEXTO DEL ORIGINAL" "$P/fichas/santo_prueba_real.md"; }
+p_cifras_con_texto() { ficha_ia_con ficha_con_texto; motor comprobar santo_prueba_real; [ $RC -eq 0 ]; }
+p_cifras_sin_texto() { ficha_ia_con ficha_sin_texto; motor comprobar santo_prueba_real; [ $RC -ne 0 ] && [[ "$SALIDA" == *"no aparece en el carrusel original"* ]]; }
+p_ruta_del_original() { ficha_ia_con ficha_con_texto; grep -q "^viral: $P/virales/santo_prueba_real$" "$P/fichas/santo_prueba_real.md"; }
+p_cifra_inventada() { ficha_ia_con ficha_con_texto; sed -i '' 's/Un fundador llegó a \$10K al mes en 3 semanas/Un fundador llegó a $25K al mes en 3 semanas/' "$P/fichas/santo_prueba_real.md"; motor comprobar santo_prueba_real; [ $RC -ne 0 ] && [[ "$SALIDA" == *"25K"* ]]; }
+p_mismo_valor() { python3 -c "import sys; sys.path.insert(0,'$MOTOR'); import ficha as f; v=f.valores; sys.exit(0 if v('1.2B')==v('1.200 millones')==v('1.2 billion')==v('1.200 M') and v('10K')==v('10,000') and v('1.2B')!=v('1.3B') else 1)"; }
+prueba ficha_ia_guarda_el_texto_del_original "texto_original.md junto al original y la ficha sin esa sección" p_ficha_texto
+prueba cifras_del_original_por_su_valor "las 6 cifras de Santo (1.2B → 1.200 millones, 10K, 10,000, 29) se dan por buenas" p_cifras_con_texto
+prueba cifras_sin_texto_del_original "sin el texto del original, se rechazan (lo que les pasaba a los perfiles nuevos)" p_cifras_sin_texto
+prueba ficha_ia_pone_la_ruta_del_original "la ficha apunta a su original aunque Claude escriba otra ruta" p_ruta_del_original
+prueba cifra_inventada "una cifra que no está en el original se sigue frenando" p_cifra_inventada
+prueba cifras_mismo_valor "1.2B = 1.2 billion = 1.200 millones = 1.200 M; 10K = 10,000; 1.2B ≠ 1.3B" p_mismo_valor
+
 # ---------- personaje (fase 3) ----------
 fotos() { sed -i '' "s|^fotos: .*|fotos: $1|" "$P/marca/marca.txt"; }
 prompt_de() { original "$1" 3; SALIDA="$(DATOS="$D" DATOS_PERFIL="$P" python3 "$MOTOR/ficha.py" prompt "$P/fichas/$1.md" "$D/prompt.txt" 1 2>&1)"; RC=$?; [ $RC -eq 0 ]; }

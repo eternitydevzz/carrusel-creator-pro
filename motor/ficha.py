@@ -70,6 +70,29 @@ def numeros(texto):
     return {n.lower().replace(".", "").replace(",", "").replace(" ", "") for n in re.findall(r"\d[\d.,]*\s?[kKmM]?\b", texto)}
 
 
+# cifra con su multiplicador: "1.2B", "1.2 billion", "1.200 millones" y "1.200 M" son la misma (1.200.000.000);
+# "10K" y "10,000" también. Así la ficha puede traducir el formato sin que la comprobación la tome por inventada.
+_MULT = {"k": 1e3, "mil": 1e3, "m": 1e6, "millon": 1e6, "millón": 1e6, "millones": 1e6, "million": 1e6, "millions": 1e6,
+         "b": 1e9, "bn": 1e9, "billion": 1e9, "billions": 1e9, "mil millones": 1e9}
+_CIFRA = re.compile(r"(\d[\d.,]*)\s?(mil millones|millones|millón|millon|millions?|billions?|mil|bn|[kKmMbB])?(?![\wáéíóúñ])", re.IGNORECASE)
+
+
+def _valor(num, suf):
+    num = num.rstrip(".,")
+    partes = re.split(r"[.,]", num)
+    if len(partes) > 1 and all(len(x) == 3 for x in partes[1:]):
+        v = float("".join(partes))                      # 1.200 / 10,000: separador de miles
+    elif len(partes) == 2:
+        v = float(partes[0] + "." + partes[1])          # 1.2 / 5,5: decimales
+    else:
+        v = float("".join(partes))
+    return round(v * _MULT.get((suf or "").lower(), 1), 3)
+
+
+def valores(texto):
+    return {_valor(n, s) for n, s in _CIFRA.findall(texto)}
+
+
 def comprobar(path):
     cab, slides = leer_ficha(path)
     fallos = []
@@ -133,15 +156,20 @@ def comprobar(path):
         # cifras que el usuario ya dio por buenas aunque el original las escriba de otra forma (p. ej. 1.3B → 1.300 millones)
         conf = cab.get("cifras_confirmadas", "")
         cifras_fuente = numeros(fuente) | numeros(conf)
+        valores_fuente = valores(fuente) | valores(conf)
         if conf.strip().lower().startswith("todas"):
             cifras_fuente = None
         for k, s in slides.items():
             for c in ("titular", "debajo", "arriba", "texto_escena", "cta_grande", "texto"):
-                for num in numeros(s.get(c, "")):
+                for m_cifra in _CIFRA.finditer(s.get(c, "")):
+                    n_txt, suf = m_cifra.group(1), m_cifra.group(2)
+                    num = numeros(n_txt + (" " + suf if suf and len(suf) == 1 else ""))
+                    num = next(iter(num)) if num else n_txt
                     if len(num) < 2:
                         continue
-                    if cifras_fuente is not None and num not in cifras_fuente:
-                        fallos.append(f"Slide {k}: la cifra '{num}' de '{c}' no aparece en el carrusel original")
+                    # vale si está escrita igual o si vale lo mismo (1.2B = 1.200 millones)
+                    if cifras_fuente is not None and num not in cifras_fuente and _valor(n_txt, suf) not in valores_fuente:
+                        fallos.append(f"Slide {k}: la cifra '{m_cifra.group(0).strip()}' de '{c}' no aparece en el carrusel original")
     m = leer_marca()
     for f in m.get("fotos", "").split(",") + m.get("tipografia", "").split(","):
         f = f.strip()

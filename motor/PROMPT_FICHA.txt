@@ -43,3 +43,7 @@ expresion: ...
 
 ## 2
 (igual, hasta el slide {N})
+
+=== TEXTO DEL ORIGINAL ===
+SLIDE 1: <todo el texto que se lee en el slide 1 del original, copiado letra por letra en su idioma, cifras incluidas tal cual>
+SLIDE 2: <igual, hasta el slide {N}>

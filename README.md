@@ -37,7 +37,15 @@ El instalador pone Node (20 o más), ffmpeg y exiftool con Homebrew, instala Cod
 ./arrancar.sh
 ```
 
-Abre `http://localhost:3000`. La primera vez sale la **bienvenida**: un formulario de 11 pasos (unos 3 minutos) que deja todo configurado: tu nombre, tu @, el color, a quién le hablas, el lema del pie, tus fotos (de 1 a 3), tus referencias de estilo (de 1 a 3), la ropa, la clave de ScrapeCreators, la comprobación de Codex y Claude Code, y la ubicación de los metadatos. Se repite desde **Ajustes → Repetir bienvenida**, y todo se puede cambiar después en **Branding** y **Ajustes**.
+Se abre sola en **`http://carrusel.localhost:3000`** (los nombres `*.localhost` llevan a tu propio Mac sin configurar nada; usa Chrome). Deja abierta la ventana de la Terminal mientras uses la app.
+
+### Instalarla como app (recomendado)
+
+En Chrome, con la app abierta, pulsa el icono de **Instalar** de la barra de direcciones (o menú ⋮ → *Transmitir, guardar y compartir* → *Instalar página como aplicación*). Queda en el Dock y en Launchpad como **Carrusel Creator Pro**, con el logo de Código MaestrIA y su propia ventana, sin pestañas ni dirección. A partir de entonces, `./arrancar.sh` abre directamente esa ventana. Sigue siendo la misma app: necesita `./arrancar.sh` en marcha.
+
+### Primera vez
+
+La primera vez sale la **bienvenida**: un formulario de 11 pasos (unos 3 minutos) que deja todo configurado: tu nombre, tu @, el color, a quién le hablas, el lema del pie, tus fotos (de 1 a 3), tus referencias de estilo (de 1 a 3), la ropa, la clave de ScrapeCreators, la comprobación de Codex y Claude Code, y la ubicación de los metadatos. Se repite desde **Ajustes → Repetir bienvenida**, y todo se puede cambiar después en **Branding** y **Ajustes**.
 
 Si Codex no está conectado, la bienvenida te da la orden exacta para la Terminal (`codex login`).
 

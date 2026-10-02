@@ -55,7 +55,7 @@ Al abrir o recargar la app sale la intro de Código MaestrIA (unos 3 segundos; s
 
 ## Varios clientes
 
-Cada cliente tiene **su marca** (fotos, @, color, lema, ángulo, ropa), **su ubicación** para los metadatos y **su biblioteca** de carruseles. Se cambia de cliente con el selector de arriba en la barra lateral; ahí también está **"+ Nuevo cliente"**, que abre una bienvenida corta (9 pasos) para dejar su marca lista. Nombre, ubicación y **Eliminar cliente** están en **Branding**.
+Cada cliente tiene **su marca** (fotos, @, color, lema, ángulo, ropa), **su ubicación** para los metadatos y **su biblioteca** de carruseles. Se cambia de cliente con el selector de arriba en la barra lateral; ahí también está **"+ Nuevo cliente"**, que abre una bienvenida corta (9 pasos) para dejar su marca lista. Nombre y ubicación están en **Branding**. Para **eliminar** un cliente, pulsa la papelera junto a su nombre en el selector (o **Eliminar cliente** en Branding).
 
 Lo que se comparte entre clientes: la cuenta de Codex y su cupo de imágenes (una sola generación a la vez entre todos), la clave de ScrapeCreators y los ajustes.
 

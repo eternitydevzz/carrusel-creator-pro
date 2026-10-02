@@ -126,6 +126,13 @@ prueba ficha_ia_pone_la_ruta_del_original "la ficha apunta a su original aunque 
 prueba cifra_inventada "una cifra que no está en el original se sigue frenando" p_cifra_inventada
 prueba cifras_mismo_valor "1.2B = 1.2 billion = 1.200 millones = 1.200 M; 10K = 10,000; 1.2B ≠ 1.3B" p_mismo_valor
 
+# ---------- descripción: cada cliente con su marca ----------
+p_desc_marca() { original con_persona_3 3; SALIDA="$(DATOS="$D" DATOS_PERFIL="$P" python3 "$MOTOR/ficha.py" prompt_descripcion "$P/fichas/con_persona_3.md" "$D/desc.txt" 2>&1)"; RC=$?
+  [ $RC -eq 0 ] && grep -q "Marca de prueba del comando" "$D/desc.txt" && ! grep -qi "sistemas de AI a empresas en USA" "$D/desc.txt"; }
+p_prompts_sin_marca_fija() { ! grep -il "sistemas de AI a empresas\|cristianews\|Cristian News" "$MOTOR"/PROMPT_*.txt; }
+prueba descripcion_con_el_angulo_del_cliente "el prompt lleva el ángulo de este cliente y no el de Cristian" p_desc_marca
+prueba prompts_sin_marca_fija "ningún prompt lleva escrita la marca de Cristian" p_prompts_sin_marca_fija
+
 # ---------- personaje (fase 3) ----------
 fotos() { sed -i '' "s|^fotos: .*|fotos: $1|" "$P/marca/marca.txt"; }
 prompt_de() { original "$1" 3; SALIDA="$(DATOS="$D" DATOS_PERFIL="$P" python3 "$MOTOR/ficha.py" prompt "$P/fichas/$1.md" "$D/prompt.txt" 1 2>&1)"; RC=$?; [ $RC -eq 0 ]; }

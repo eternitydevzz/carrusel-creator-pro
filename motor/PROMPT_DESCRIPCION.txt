@@ -5,7 +5,7 @@ QUIÉN LA LEE: {ANGULO}. Idioma: {IDIOMA}.
 ESTRUCTURA (en este orden, con una línea en blanco entre bloques):
 1. Primera línea (gancho): la idea de la portada con las palabras clave del tema (la herramienta, "agentes de AI", "automatización", lo que toque). Es lo único que se ve sin pulsar "más" y es el texto en el que busca Instagram, así que las palabras clave van aquí, dichas con naturalidad.
 2. Uno o dos párrafos cortos que resumen lo que enseñan los slides interiores, con los nombres tal cual aparecen en la ficha.
-3. Una frase que lo lleva al ángulo de la cuenta (qué gana con esto alguien que vende sistemas de AI a empresas en USA).
+3. Una frase que lo lleva al ángulo de la cuenta: qué gana con esto quien la lee (QUIÉN LA LEE, arriba). Nada de otro público ni de otra marca.
 4. Llamada a la acción: "💬 Comenta {CTA} y te mando el link." (si la ficha promete otra cosa con esa palabra, por ejemplo una guía o una lista, cámbialo por lo que prometa).
 5. "📌 Guárdalo para ..." con un motivo concreto del tema.
 6. Última línea: exactamente 5 hashtags, separados por un espacio, en minúscula y sin tildes. Los 5 hashtags más usados y con más alcance para este tema en Instagram, mezclando generales del nicho (#ai) y concretos del tema. Al menos uno en español.

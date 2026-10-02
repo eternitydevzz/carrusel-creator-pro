@@ -6,7 +6,7 @@ import { Barra } from "@/componentes/Barra";
 import { GuardiaBienvenida } from "@/componentes/GuardiaBienvenida";
 import { CLAVE_SIN_INTRO } from "@/lib/navegacion";
 
-// Intro de Código MaestrIA (la de la landing, landing-maestria/intro-matrix): sale en cada carga o recarga (F5).
+// Intro de Código MaestrIA, versión premium (landing-maestria/intro-matrix/intro-ghl-premium.html): sale en cada carga o recarga (F5).
 // Las recargas que hace la app sola dejan una nota de un solo uso (lib/navegacion.ts) y esas van sin intro.
 // Se salta con clic, Escape, Enter o espacio; con "reducir movimiento" en el sistema no sale.
 const CONFIG_INTRO = `(function(){var s=false;try{s=sessionStorage.getItem("${CLAVE_SIN_INTRO}")==="1";sessionStorage.removeItem("${CLAVE_SIN_INTRO}");if(s)sessionStorage.setItem("ccp-intro-vista","1");}catch(e){}

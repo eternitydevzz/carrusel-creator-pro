@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs, existsSync } from "node:fs";
 import path from "node:path";
-import { cliente, cuerpoJson, datos, escribirAjustes, leerAjustes, leerMarca, perfilActivo } from "@/lib/motor";
+import { cliente, cuerpoJson, datos, escribirAjustes, leerAjustes, leerMarca, lista, perfilActivo } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -10,16 +10,16 @@ async function leerPerfil(): Promise<Record<string, unknown>> {
 }
 
 /** ¿Hace falta la bienvenida para el cliente activo? Sí, si no la terminó y su marca está incompleta
- *  (sin @ propio, con menos de 2 fotos del personaje o sin referencia de estilo).
+ *  (sin @ propio, sin ninguna foto del personaje o sin referencia de estilo).
  *  modo "inicial": primera vez del equipo en este Mac (marca + conexiones); "cliente": solo la marca de un cliente nuevo. */
 export async function GET() {
   const ajustes = await leerAjustes();
   const perfil = await leerPerfil();
   const marca = await leerMarca();
   const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter((f) => f && existsSync(path.join(cliente(), "marca", f)));
-  const tipografia = !!marca.tipografia && existsSync(path.join(cliente(), "marca", marca.tipografia));
+  const tipografia = lista(marca.tipografia).some((f) => existsSync(path.join(cliente(), "marca", f)));
   const handle = !!marca.handle && marca.handle !== "@tucuenta";
-  const faltan = [!handle && "la cuenta", fotos.length < 2 && "las fotos", !tipografia && "la referencia de estilo"].filter(Boolean);
+  const faltan = [!handle && "la cuenta", fotos.length < 1 && "las fotos", !tipografia && "la referencia de estilo"].filter(Boolean);
   const hecha = perfil.bienvenida_hecha === true || faltan.length === 0;
   // el equipo ya está configurado si terminó la bienvenida completa, si la terminó antes de existir los perfiles
   // (bienvenida_hecha global) o si ya hay más de un cliente (alguien creó uno nuevo desde el selector)

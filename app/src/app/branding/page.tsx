@@ -4,8 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Trash2, Upload } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel } from "@/componentes/ui";
 import { PanelCliente } from "@/componentes/PanelCliente";
+import { avisarPerfilesCambiados } from "@/lib/navegacion";
 
-type Marca = { marca: Record<string, string>; fotos: string[]; tipografia: string; referencias: string[] };
+type Marca = { marca: Record<string, string>; fotos: string[]; tipografia: string; estilos: string[]; referencias: string[] };
 
 export default function Branding() {
   const [m, setM] = useState<Marca | null>(null);
@@ -34,10 +35,10 @@ export default function Branding() {
     const d = await r.json();
     if (!r.ok) setAviso({ tono: "danger", texto: d.error ?? "No se pudo subir" });
     else if (d.fallidos?.length) setAviso({ tono: "danger", texto: `No se pudo leer como imagen: ${d.fallidos.join(", ")}. Las demás se guardaron.` });
-    setSubiendo(null); await cargar();
+    setSubiendo(null); await cargar(); avisarPerfilesCambiados();
   }
 
-  async function quitar(ruta: string) { await fetch("/api/marca/foto", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ruta }) }); await cargar(); }
+  async function quitar(ruta: string) { await fetch("/api/marca/foto", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ruta }) }); await cargar(); avisarPerfilesCambiados(); }
 
   if (!m) return <Panel><p style={{ color: "var(--fg-muted)" }}>Cargando…</p></Panel>;
   const img = (ruta: string) => `/api/archivo?ruta=${encodeURIComponent(`marca/${ruta}`)}&t=${Date.now()}`;
@@ -49,8 +50,8 @@ export default function Branding() {
       {aviso && <Aviso tono={aviso.tono}>{aviso.texto}</Aviso>}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <Subida titulo="Personaje" texto="2 o 3 fotos de la persona: rostro de frente, varios ángulos y una de cuerpo. Van adjuntas a cada generación y a cada corrección." tipo="personaje" multiple items={m.fotos} img={img} subiendo={subiendo === "personaje"} onSubir={subir} onQuitar={quitar} />
-        <Subida titulo="Referencias de estilo" texto="Ejemplos de cómo quieres el acabado y la tipografía (tus miniaturas, por ejemplo). La primera se adjunta al prompt." tipo="tipografia" items={m.tipografia ? [m.tipografia] : []} img={img} subiendo={subiendo === "tipografia"} onSubir={subir} onQuitar={quitar} />
+        <Subida titulo="Personaje" texto="De 1 a 3 fotos de la persona (con 2 o 3, la cara sale más fiel): rostro de frente, varios ángulos y una de cuerpo. Van adjuntas a cada generación y a cada corrección." tipo="personaje" multiple items={m.fotos} img={img} subiendo={subiendo === "personaje"} onSubir={subir} onQuitar={quitar} />
+        <Subida titulo="Referencias de estilo" texto="De 1 a 3 ejemplos de cómo quieres el acabado y la tipografía (tus miniaturas, por ejemplo). Todas van adjuntas a cada generación." tipo="tipografia" multiple items={m.estilos ?? []} img={img} subiendo={subiendo === "tipografia"} onSubir={subir} onQuitar={quitar} />
       </div>
 
       <Panel fuerte className="aparece">

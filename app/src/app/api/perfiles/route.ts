@@ -32,12 +32,13 @@ async function estado(id: string) {
   const fotos = campo(marca, "fotos").split(",").map((f) => f.trim()).filter(Boolean);
   let existentes = 0;
   for (const f of fotos) if (await existe(path.join(dir, "marca", f))) existentes++;
-  const tipografia = campo(marca, "tipografia");
+  let estilosOk = 0;
+  for (const f of campo(marca, "tipografia").split(",").map((x) => x.trim()).filter(Boolean)) if (await existe(path.join(dir, "marca", f))) estilosOk++;
   let fichas = 0;
   try { fichas = (await fs.readdir(path.join(dir, "fichas"))).filter((f) => f.endsWith(".md")).length; } catch { /* sin fichas */ }
   let enFotos = 0;
   try { enFotos = (await fs.readdir(path.join(dir, "marca", "fotos"))).length; } catch { /* sin fotos */ }
-  const completo = !!handle && handle !== "@tucuenta" && existentes >= 2 && !!tipografia && (await existe(path.join(dir, "marca", tipografia)));
+  const completo = !!handle && handle !== "@tucuenta" && existentes >= 1 && estilosOk >= 1;
   const vacio = (!handle || handle === "@tucuenta") && enFotos === 0 && fichas === 0;
   return { completo, vacio };
 }

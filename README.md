@@ -11,7 +11,7 @@ Convierte carruseles virales de Instagram (o tu propio guion) en carruseles con 
 - Codex CLI conectado a tu cuenta de ChatGPT (`codex login`): genera las imágenes.
 - Claude Code conectado a tu cuenta (`claude`): redacta las fichas.
 - Una clave de [ScrapeCreators](https://scrapecreators.com) para descargar los carruseles originales (1 crédito por carrusel).
-- Tus fotos: 2 o 3 del personaje y una referencia de estilo.
+- Tus fotos: de 1 a 3 del personaje (con 2 o 3 la cara sale más fiel) y de 1 a 3 referencias de estilo.
 
 Cada persona usa **sus propias cuentas** (ChatGPT para Codex, Claude, ScrapeCreators) y **su propia marca**. Nada se comparte entre usuarios: tus fotos, fichas, carruseles y claves viven en `datos/`, que nunca se sube a GitHub.
 

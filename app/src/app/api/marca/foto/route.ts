@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cliente, cuerpoJson, escribirMarca, leerMarca } from "@/lib/motor";
+import { cliente, cuerpoJson, escribirMarca, leerMarca, lista } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
-/** Sube fotos del kit: tipo=personaje (hasta 3, van al prompt), tipo=tipografia (1), tipo=referencia (varias, solo para verlas). */
+/** Sube fotos del kit: tipo=personaje (1 a 3, van al prompt), tipo=tipografia (referencias de estilo, 1 a 3, van al prompt), tipo=referencia (varias, solo para verlas). */
 export async function POST(req: Request) {
   const form = await req.formData();
   const tipo = String(form.get("tipo") ?? "");
@@ -22,7 +22,8 @@ export async function POST(req: Request) {
   const fallidos: string[] = [];
 
   for (const a of archivos) {
-    const base = tipo === "personaje" ? `personaje_${Date.now()}_${guardados.length + 1}` : tipo === "tipografia" ? "tipografia" : `ref_${Date.now()}_${guardados.length + 1}`;
+    // nombre distinto en cada subida: con el mismo nombre la pantalla seguía enseñando la imagen anterior (misma dirección)
+    const base = tipo === "personaje" ? `personaje_${Date.now()}_${guardados.length + 1}` : tipo === "tipografia" ? `tipografia_${Date.now()}_${guardados.length + 1}` : `ref_${Date.now()}_${guardados.length + 1}`;
     const tmp = path.join(carpeta, `.${base}.subiendo`);
     await fs.writeFile(tmp, Buffer.from(await a.arrayBuffer()));
     // todo pasa a JPG con sips (acepta HEIC, PNG, WEBP…) y se limita a 1600 px para no cargar el prompt
@@ -41,7 +42,13 @@ export async function POST(req: Request) {
     for (const vieja of fotos.filter((f) => !nuevas.includes(f))) await fs.rm(path.join(cliente(), "marca", vieja), { force: true });
     marca.fotos = nuevas.join(", ");
   }
-  if (tipo === "tipografia") marca.tipografia = guardados[0];
+  if (tipo === "tipografia") {
+    // referencias de estilo: como máximo 3, las nuevas primero (la casilla "tipografia" de marca.txt es una lista)
+    const estilos = lista(marca.tipografia);
+    const nuevas = [...guardados, ...estilos].slice(0, 3);
+    for (const vieja of estilos.filter((f) => !nuevas.includes(f) && !fotos.includes(f))) await fs.rm(path.join(cliente(), "marca", vieja), { force: true });
+    marca.tipografia = nuevas.join(", ");
+  }
   await escribirMarca(marca);
   return NextResponse.json({ ok: true, guardados, fallidos, marca });
 }
@@ -53,8 +60,8 @@ export async function DELETE(req: Request) {
   if (!absoluta.startsWith(path.resolve(cliente(), "marca") + path.sep)) return NextResponse.json({ error: "Ruta no permitida" }, { status: 400 });
   await fs.rm(absoluta, { force: true });
   const marca = await leerMarca();
-  marca.fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter((f) => f && f !== ruta).join(", ");
-  if (marca.tipografia === ruta) marca.tipografia = "";
+  marca.fotos = lista(marca.fotos).filter((f) => f !== ruta).join(", ");
+  marca.tipografia = lista(marca.tipografia).filter((f) => f !== ruta).join(", ");
   await escribirMarca(marca);
   return NextResponse.json({ ok: true });
 }

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cliente, cuerpoJson, datos, escribirMarca, leerMarca } from "@/lib/motor";
+import { cliente, cuerpoJson, datos, escribirMarca, leerMarca, lista } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -12,7 +12,7 @@ export async function GET() {
   const fotos = (marca.fotos ?? "").split(",").map((f) => f.trim()).filter(Boolean);
   let referencias: string[] = [];
   try { referencias = (await fs.readdir(path.join(cliente(), "marca", "referencias"))).filter((f) => /\.(jpe?g|png|webp)$/i.test(f)).map((f) => `referencias/${f}`); } catch { /* sin referencias */ }
-  return NextResponse.json({ marca, fotos, tipografia: marca.tipografia ?? "", referencias });
+  return NextResponse.json({ marca, fotos, tipografia: lista(marca.tipografia)[0] ?? "", estilos: lista(marca.tipografia), referencias });
 }
 
 /** Guarda los campos de texto del kit de marca. Las fotos van por /api/marca/foto. */

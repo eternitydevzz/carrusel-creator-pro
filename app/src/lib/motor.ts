@@ -124,6 +124,8 @@ export async function existe(ruta: string) { try { await fs.access(ruta); return
 export async function cuerpoJson<T extends object>(req: Request): Promise<Partial<T>> {
   try { const d = await req.json(); return d && typeof d === "object" && !Array.isArray(d) ? (d as Partial<T>) : {}; } catch { return {}; }
 }
+/** Casillas de marca.txt con varias rutas separadas por comas (fotos, tipografia). */
+export function lista(valor: string | undefined): string[] { return (valor ?? "").split(",").map((f) => f.trim()).filter(Boolean); }
 export function nombreSeguro(nombre: string) { return /^[a-z0-9_\-]+$/i.test(nombre) ? nombre : null; }
 export function limpiarNombre(nombre: string) {
   return nombre.trim().toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");

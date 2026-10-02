@@ -14,7 +14,7 @@ DATOS = os.environ.get("DATOS_PERFIL") or os.environ.get("DATOS") or os.path.joi
 MARCA = os.path.join(DATOS, "marca", "marca.txt")
 BASE = os.path.join(AQUI, "PROMPT_BASE.txt")
 BASE_CLARO = os.path.join(AQUI, "PROMPT_BASE_CLARO.txt")  # cabecera 'estilo: claro': fondo claro como el original
-ESTILO = {"claro": False, "mascotas": False, "mascotas_cara": False}  # lo rellena prompt() con la cabecera de la ficha
+ESTILO = {"claro": False, "mascotas": False, "mascotas_cara": False, "quien": "las fotos 1, 2 y 3"}  # lo rellena prompt() con la cabecera de la ficha
 REGLAS = os.path.join(AQUI, "REGLAS.md")
 
 OBLIGATORIAS = []  # por slide hace falta 'titular' o 'texto'; el resto es opcional
@@ -140,7 +140,7 @@ def comprobar(path):
                     if cifras_fuente is not None and num not in cifras_fuente:
                         fallos.append(f"Slide {k}: la cifra '{num}' de '{c}' no aparece en el carrusel original")
     m = leer_marca()
-    for f in m.get("fotos", "").split(",") + [m.get("tipografia", "")]:
+    for f in m.get("fotos", "").split(",") + m.get("tipografia", "").split(","):
         f = f.strip()
         if f and not os.path.isfile(os.path.join(DATOS, "marca", f)):
             fallos.append(f"Falta la foto de marca {f}")
@@ -186,7 +186,7 @@ def render_slide(k, s, n):
     if sin_personaje(s):
         if ESTILO["mascotas"]:  # cabecera 'mascotas: si': los muñecos del original son la idea del carrusel y se quedan
             if ESTILO.get("mascotas_cara"):
-                out.append("SIN PERSONAJE en este slide: el personaje de las fotos no aparece como persona. Los muñecos de píxel del original SÍ aparecen, como en el slide original (son los agentes de AI), y cada muñeco lleva la cara del personaje de las fotos 1, 2 y 3, reconocible, sobre su cuerpo de vóxel, con su gorro o accesorio del original.")
+                out.append("SIN PERSONAJE en este slide: el personaje de las fotos no aparece como persona. Los muñecos de píxel del original SÍ aparecen, como en el slide original (son los agentes de AI), y cada muñeco lleva la cara del personaje de " + ESTILO["quien"] + ", reconocible, sobre su cuerpo de vóxel, con su gorro o accesorio del original.")
             else:
                 out.append("SIN PERSONAJE en este slide: el personaje de las fotos no aparece. Los muñecos de píxel del original SÍ aparecen, como en el slide original: son los agentes de AI.")
         else:
@@ -216,14 +216,20 @@ def prompt(path, salida, hojas):
         verbo = "le falta" if len(faltan) == 1 and not faltan[0].startswith("las ") else "le faltan"
         raise SystemExit(f"FALTA_MARCA: a la marca de este cliente {verbo} {', '.join(faltan)}. Complétalo en Branding antes de generar.")
     fotos = [f.strip() for f in m["fotos"].split(",") if f.strip()]
+    estilos = [f.strip() for f in m["tipografia"].split(",") if f.strip()]  # referencias de estilo: de 1 a 3
+    # qué imágenes son la cara: con 1 foto, las imágenes 2 y 3 ya son referencias de estilo y no pueden llamarse "fotos del personaje"
+    ESTILO["quien"] = {1: "la foto 1", 2: "las fotos 1 y 2"}.get(len(fotos), "las fotos 1, 2 y 3")
+    # el orden tiene que ser el mismo en que carrusel.sh adjunta las imágenes (refs_marca: fotos, estilos; luego hojas y guía)
     img = [f"{i+1}: foto del personaje." for i in range(len(fotos))]
-    img.append(f"{len(fotos)+1}: miniatura de la marca, referencia de tipografía y acabado.")
+    e0 = len(fotos) + 1
+    img.append(f"{e0}: referencia de estilo de la marca (tipografía y acabado)." if len(estilos) == 1 else f"{e0} a {e0+len(estilos)-1}: referencias de estilo de la marca (tipografía y acabado).")
+    sig = e0 + len(estilos)
     h = int(hojas)
     if h == 1:
-        img.append(f"{len(fotos)+2}: los slides del carrusel original, en una hoja, de izquierda a derecha y de arriba abajo.")
+        img.append(f"{sig}: los slides del carrusel original, en una hoja, de izquierda a derecha y de arriba abajo.")
     elif h > 1:
-        img.append(f"{len(fotos)+2} a {len(fotos)+1+h}: los slides del carrusel original, 6 por hoja, de izquierda a derecha y de arriba abajo.")
-    img.append(f"{len(fotos)+2+h}: guía de zonas. Muestra el contador y el pie que pondremos nosotros encima de cada slide. Sus dos zonas quedan libres en tu imagen.")
+        img.append(f"{sig} a {sig+h-1}: los slides del carrusel original, 6 por hoja, de izquierda a derecha y de arriba abajo.")
+    img.append(f"{sig+h}: guía de zonas. Muestra el contador y el pie que pondremos nosotros encima de cada slide. Sus dos zonas quedan libres en tu imagen.")
     ESTILO["claro"] = cab.get("estilo", "").strip().lower() == "claro"
     ESTILO["mascotas"] = cab.get("mascotas", "").strip().lower() in ("si", "sí", "cara")
     ESTILO["mascotas_cara"] = cab.get("mascotas", "").strip().lower() == "cara"  # los muñecos llevan la cara del personaje
@@ -232,6 +238,7 @@ def prompt(path, salida, hojas):
         base = "\n".join(l for l in base.split("\n") if not l.startswith("- Carrusel original:"))
     texto = (base.replace("{IMAGENES}", "\n".join(img))
                  .replace("{N}", str(n))
+                 .replace("{FOTOS_PERSONAJE}", ESTILO["quien"])
                  .replace("{ROPA}", m["ropa"].split(".")[0])
                  .replace("{AZUL}", m["azul"])
                  .replace("{SLIDES}", "\n\n".join(render_slide(k, slides[k], n) for k in sorted(slides))))

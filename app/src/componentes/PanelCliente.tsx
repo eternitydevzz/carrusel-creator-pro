@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Trash2 } from "lucide-react";
 import { Aviso, Campo, Panel } from "@/componentes/ui";
-import { recargarSinIntro } from "@/lib/navegacion";
+import { avisarPerfilesCambiados, recargarSinIntro } from "@/lib/navegacion";
 
 type Perfil = { id: string; nombre: string; activo: boolean };
 type Ubicacion = Record<string, string | number>;
@@ -42,6 +42,7 @@ export function PanelCliente() {
       if (!Number.isFinite(lat) || !Number.isFinite(lon)) throw new Error("La latitud y la longitud tienen que ser números");
       await fetch("/api/ajustes", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ubicacion: { ...ubi, lat, lon } }) });
       setAviso({ tono: "ok", texto: "Guardado." });
+      avisarPerfilesCambiados();
     } catch (e) { setAviso({ tono: "danger", texto: (e as Error).message }); } finally { setGuardando(false); }
   }
 

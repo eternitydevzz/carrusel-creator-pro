@@ -82,7 +82,7 @@ export function Bienvenida() {
   const [ropa, setRopa] = useState("");
   const [ropaOtra, setRopaOtra] = useState("");
   const [fotos, setFotos] = useState<string[]>([]);
-  const [estilo, setEstilo] = useState("");
+  const [estilos, setEstilos] = useState<string[]>([]); // referencias de estilo, de 1 a 3
   const [subiendo, setSubiendo] = useState(false);
   const [encima, setEncima] = useState(false);
   const [clave, setClave] = useState("");
@@ -107,7 +107,7 @@ export function Bienvenida() {
       setModo(b.modo); setPerfilId(b.perfil);
       if (b.modo === "cliente" && b.nombre && b.nombre !== "Nuevo cliente") setNombre(b.nombre); // el nombre provisional no se precarga
     }).catch(() => {});
-    fetch("/api/marca", { cache: "no-store" }).then((r) => r.json()).then((d: { marca: Record<string, string>; fotos: string[]; tipografia: string }) => {
+    fetch("/api/marca", { cache: "no-store" }).then((r) => r.json()).then((d: { marca: Record<string, string>; fotos: string[]; estilos?: string[] }) => {
       if (!vivo) return;
       setMudo(Sfx.enSilencio());
       const m = d.marca;
@@ -118,7 +118,7 @@ export function Bienvenida() {
       if (m.lema) setLema(m.lema);
       if (m.ropa) { if (ROPAS.some((r) => r.v === m.ropa)) setRopa(m.ropa); else { setRopa("otro"); setRopaOtra(m.ropa); } }
       setFotos(d.fotos ?? []);
-      setEstilo(d.tipografia ?? "");
+      setEstilos(d.estilos ?? []);
     }).catch(() => {});
     return () => { vivo = false; };
   }, []);
@@ -140,8 +140,8 @@ export function Bienvenida() {
       case "color": return !color ? "Elige un color" : color === "otro" && !/^#[0-9a-fA-F]{6}$/.test(colorOtro) ? "Elige el color" : "";
       case "angulo": return !angulo ? "Elige una opción" : angulo === "otro" && !anguloOtro.trim() ? "Escribe a quién le hablas" : "";
       case "lema": return lema.trim() ? "" : "Escribe tu lema";
-      case "fotos": return fotos.length >= 2 ? "" : "Sube al menos 2 fotos tuyas";
-      case "estilo": return estilo ? "" : "Sube una imagen de referencia";
+      case "fotos": return fotos.length >= 1 ? "" : t("Sube al menos una foto tuya", "Sube al menos una foto");
+      case "estilo": return estilos.length >= 1 ? "" : "Sube al menos una imagen de referencia";
       case "ropa": return !ropa ? "Elige una opción" : ropa === "otro" && !ropaOtra.trim() ? "Escribe la ropa" : "";
       default: return "";
     }
@@ -206,16 +206,25 @@ export function Bienvenida() {
     try {
       const fd = new FormData();
       fd.append("tipo", tipo);
-      for (const f of Array.from(lista).slice(0, tipo === "personaje" ? 3 : 1)) fd.append("archivos", f);
+      for (const f of Array.from(lista).slice(0, 3)) fd.append("archivos", f);
       const r = await fetch("/api/marca/foto", { method: "POST", body: fd });
       const d = await r.json();
       if (!r.ok) throw new Error(d.error ?? "No se pudo subir");
       const m = d.marca as Record<string, string>;
-      if (tipo === "personaje") setFotos((m.fotos ?? "").split(",").map((f) => f.trim()).filter(Boolean));
-      else setEstilo(m.tipografia ?? "");
+      const separar = (v?: string) => (v ?? "").split(",").map((f) => f.trim()).filter(Boolean);
+      if (tipo === "personaje") setFotos(separar(m.fotos));
+      else setEstilos(separar(m.tipografia));
       Sfx.select();
       if (d.fallidos?.length) setError(`No se pudo leer como imagen: ${d.fallidos.join(", ")}. Las demás se guardaron.`);
     } catch (e) { setError((e as Error).message); } finally { setSubiendo(false); }
+  }
+
+  /** Borrar una foto subida por error (o una referencia de estilo): se quita del disco y de la marca. */
+  async function borrarFoto(ruta: string) {
+    Sfx.click(); setError("");
+    const r = await fetch("/api/marca/foto", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ruta }) });
+    if (!r.ok) { setError((await r.json()).error ?? "No se pudo borrar"); return; }
+    if (estilos.includes(ruta)) setEstilos((es) => es.filter((x) => x !== ruta)); else setFotos((fs) => fs.filter((x) => x !== ruta));
   }
 
   // opciones de la pantalla actual, para los atajos de teclado 1-6
@@ -287,24 +296,28 @@ export function Bienvenida() {
         <input className={`cm-input${error ? " is-bad" : ""}`} autoFocus value={lema} onChange={(e) => setLema(e.target.value.toUpperCase())} placeholder="SISTEMAS DE AI PARA EMPRESAS EN USA" maxLength={48} />
       </>);
       case "fotos": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("Sube 2 o 3 fotos tuyas", `Sube 2 o 3 fotos de ${nombre.trim() || "el cliente"}`)}</h2>
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("Sube de 1 a 3 fotos tuyas", `Sube de 1 a 3 fotos de ${nombre.trim() || "el cliente"}`)}</h2>
         <p className="cm-q__help">{t("De frente, con buena luz y de distintos ángulos. Codex las usa para que en cada slide salgas tú.", "De frente, con buena luz y de distintos ángulos. Codex las usa para que salga en cada slide.")}</p>
         {fotos.length > 0 && <div className="cm-thumbs">{fotos.map((f) => (
           <div key={f} className="cm-thumb">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={img(f)} alt="Tu foto" />
+            <button type="button" className="cm-thumb__x" onClick={() => void borrarFoto(f)} aria-label="Borrar esta foto" title="Borrar esta foto"><X size={16} /></button>
           </div>
         ))}</div>}
         <Zona multiple onFiles={(l) => subir(l, "personaje")} subiendo={subiendo} encima={encima} setEncima={setEncima} texto={fotos.length ? "Añadir o cambiar fotos (máximo 3)" : "Arrastra tus fotos aquí"} />
       </>);
       case "estilo": return (<>
-        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>Sube una referencia de estilo</h2>
-        <p className="cm-q__help">Una portada o miniatura que te guste: Codex copia de ahí la letra y el acabado.</p>
-        {estilo && <div className="cm-thumbs"><div className="cm-thumb">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={img(estilo)} alt="Tu referencia" />
-        </div></div>}
-        <Zona onFiles={(l) => subir(l, "tipografia")} subiendo={subiendo} encima={encima} setEncima={setEncima} texto={estilo ? "Cambiar la referencia" : "Arrastra la imagen aquí"} />
+        <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>Sube de 1 a 3 referencias de estilo</h2>
+        <p className="cm-q__help">Portadas o miniaturas que te gusten: Codex copia de ahí la letra y el acabado.</p>
+        {estilos.length > 0 && <div className="cm-thumbs">{estilos.map((f) => (
+          <div key={f} className="cm-thumb">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={img(f)} alt="Tu referencia" />
+            <button type="button" className="cm-thumb__x" onClick={() => void borrarFoto(f)} aria-label="Borrar esta referencia" title="Borrar esta referencia"><X size={16} /></button>
+          </div>
+        ))}</div>}
+        <Zona multiple onFiles={(l) => subir(l, "tipografia")} subiendo={subiendo} encima={encima} setEncima={setEncima} texto={estilos.length ? "Añadir o cambiar referencias (máximo 3)" : "Arrastra las imágenes aquí"} />
       </>);
       case "ropa": return (<>
         <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>{t("¿Qué ropa llevas en los slides?", "¿Qué ropa lleva en los slides?")}</h2>
@@ -397,7 +410,7 @@ export function Bienvenida() {
               <div><span>Cuenta</span><b>{handle.startsWith("@") ? handle : "@" + handle}</b></div>
               <div><span>Color</span><b style={{ color: color === "otro" ? colorOtro : color }}>● {color === "otro" ? colorOtro : COLORES.find((c) => c.v === color)?.t}</b></div>
               <div><span>Lema</span><b>{lema}</b></div>
-              <div><span>Fotos</span><b>{fotos.length} + referencia de estilo</b></div>
+              <div><span>Fotos</span><b>{fotos.length} {fotos.length === 1 ? "foto" : "fotos"} · {estilos.length} {estilos.length === 1 ? "referencia" : "referencias"}</b></div>
               {esCliente
                 ? <div><span>Publica en</span><b>{UBICACIONES.find((u) => u.v === ubicacion)?.t}</b></div>
                 : <div><span>Codex</span><b>{aj?.codex_ok ? "Conectado ✓" : "Pendiente"}</b></div>}

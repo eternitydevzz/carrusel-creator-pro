@@ -2,8 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
-import { recargarSinIntro } from "@/lib/navegacion";
+import { EVENTO_PERFILES, recargarSinIntro } from "@/lib/navegacion";
 
 type Perfil = { id: string; nombre: string; handle: string; azul: string; foto: string; carruseles: number; activo: boolean; completo: boolean };
 
@@ -14,8 +15,9 @@ function Avatar({ p, tam = 34 }: { p: Perfil; tam?: number }) {
   const [fallo, setFallo] = useState(false);
   const estilo = { width: tam, height: tam, background: p.azul, boxShadow: `0 6px 18px -8px ${p.azul}` };
   if (p.foto && !fallo) {
+    // la foto va en la dirección: si cambia, la dirección cambia y se ve la nueva (con la misma, se quedaba la anterior)
     // eslint-disable-next-line @next/next/no-img-element
-    return <img src={`/api/perfiles?foto=${p.id}`} alt="" className="shrink-0 rounded-full object-cover" style={estilo} onError={() => setFallo(true)} />;
+    return <img src={`/api/perfiles?foto=${p.id}&v=${encodeURIComponent(p.foto)}`} alt="" className="shrink-0 rounded-full object-cover" style={estilo} onError={() => setFallo(true)} />;
   }
   return <span className="grid shrink-0 place-items-center rounded-full text-[14px] font-bold text-white" style={estilo}>{p.nombre.trim()[0]?.toUpperCase() ?? "?"}</span>;
 }
@@ -26,12 +28,17 @@ export function SelectorCliente({ compacto = false }: { compacto?: boolean }) {
   const [abierto, setAbierto] = useState(false);
   const [ocupado, setOcupado] = useState(false);
   const caja = useRef<HTMLDivElement>(null);
+  const ruta = usePathname();
 
+  // se vuelve a leer al cambiar de pantalla (p. ej. al terminar la bienvenida de un cliente nuevo) y cuando
+  // Branding avisa de que ha guardado (nombre o fotos): así el selector nunca enseña datos viejos sin recargar
   useEffect(() => {
     let vivo = true;
-    fetch("/api/perfiles", { cache: "no-store" }).then((r) => r.json()).then((d: { perfiles: Perfil[] }) => { if (vivo) setPerfiles(d.perfiles ?? []); }).catch(() => {});
-    return () => { vivo = false; };
-  }, []);
+    const leer = () => fetch("/api/perfiles", { cache: "no-store" }).then((r) => r.json()).then((d: { perfiles: Perfil[] }) => { if (vivo) setPerfiles(d.perfiles ?? []); }).catch(() => {});
+    void leer();
+    window.addEventListener(EVENTO_PERFILES, leer);
+    return () => { vivo = false; window.removeEventListener(EVENTO_PERFILES, leer); };
+  }, [ruta]);
   useEffect(() => {
     if (!abierto) return;
     const fuera = (e: PointerEvent) => { if (caja.current && !caja.current.contains(e.target as Node)) setAbierto(false); };
@@ -58,7 +65,7 @@ export function SelectorCliente({ compacto = false }: { compacto?: boolean }) {
     <div ref={caja} className={`relative ${compacto ? "" : "mb-5"}`}>
       <button type="button" className="vidrio-suave flex w-full items-center gap-3 rounded-2xl border p-2.5 text-left transition-colors hover:bg-white/5" style={{ borderColor: "var(--border)" }}
         onClick={() => setAbierto((a) => !a)} aria-haspopup="listbox" aria-expanded={abierto} disabled={ocupado}>
-        <Avatar p={activo} />
+        <Avatar key={activo.foto} p={activo} />
         <span className="min-w-0 flex-1 leading-tight">
           <span className="block truncate text-[14px] font-semibold">{activo.nombre}</span>
           <span className="block truncate text-[12px]" style={{ color: activo.completo ? "var(--fg-muted)" : "var(--warn, #fbbf24)" }}>{activo.completo ? activo.handle : "Marca sin completar"}</span>
@@ -75,7 +82,7 @@ export function SelectorCliente({ compacto = false }: { compacto?: boolean }) {
             <button key={p.id} type="button" role="option" aria-selected={p.activo} disabled={ocupado}
               className="flex w-full items-center gap-3 rounded-xl p-2 text-left transition-colors hover:bg-white/5"
               onClick={() => (p.activo ? setAbierto(false) : void activar(p.id))}>
-              <Avatar p={p} tam={28} />
+              <Avatar key={p.foto} p={p} tam={28} />
               <span className="min-w-0 flex-1 leading-tight">
                 <span className="block truncate text-[13.5px] font-semibold">{p.nombre}</span>
                 <span className="block truncate text-[11.5px]" style={{ color: p.completo ? "var(--fg-muted)" : "var(--warn, #fbbf24)" }}>{p.completo ? `${p.carruseles} ${p.carruseles === 1 ? "carrusel" : "carruseles"}` : "Marca sin completar"}</span>

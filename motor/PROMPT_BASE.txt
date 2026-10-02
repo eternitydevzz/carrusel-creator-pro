@@ -4,7 +4,7 @@ IMÁGENES ADJUNTAS:
 Crea un carrusel vertical 4:5 (1080 x 1350 px) para Instagram sobre AI, de {N} slides. Actúa como director creativo: lee el guion, encuentra la idea visual más potente de cada slide y conviértela en una imagen que se entienda en menos de 1 segundo y dé ganas de seguir deslizando. Acabado premium, como si lo hubiera diseñado un creador profesional de portadas virales de tecnología.
 
 LO FIJO (branding de la cuenta, no se toca):
-- Personaje: el de las fotos 1, 2 y 3. Misma cara y mismos rasgos en todos los slides en los que aparece. Las fotos son solo para su identidad: no copies ninguna tal cual; cambia el ángulo de la cabeza, la mirada y la expresión en cada slide. Si el guion de un slide dice "SIN PERSONAJE", en ese slide no hay ninguna persona: la escena lo llena todo.
+- Personaje: el de {FOTOS_PERSONAJE}. Misma cara y mismos rasgos en todos los slides en los que aparece. Las fotos son solo para su identidad: no copies ninguna tal cual; cambia el ángulo de la cabeza, la mirada y la expresión en cada slide. Si el guion de un slide dice "SIN PERSONAJE", en ese slide no hay ninguna persona: la escena lo llena todo.
 - Ropa: {ROPA}. La misma en todos los slides; lo que cambia es la pose, el ángulo y la expresión.
 - Manos: una sola acción por slide, la que indica el guion. Nunca manos de más ni dedos raros; la mano que no hace falta no aparece.
 - Fondo: oscuro y futurista, con alto contraste, aunque el carrusel original tenga fondo claro.

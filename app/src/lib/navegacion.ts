@@ -7,3 +7,7 @@ export function recargarSinIntro(ruta = "/") {
   try { sessionStorage.setItem(CLAVE_SIN_INTRO, "1"); } catch { /* sin almacenamiento: saldrá la intro, nada más */ }
   window.location.assign(new URL(ruta, window.location.origin).href);
 }
+
+/** Aviso para que el selector de clientes vuelva a leer los datos (tras guardar el nombre o las fotos de un cliente). */
+export const EVENTO_PERFILES = "ccp-perfiles-cambiados";
+export function avisarPerfilesCambiados() { window.dispatchEvent(new Event(EVENTO_PERFILES)); }

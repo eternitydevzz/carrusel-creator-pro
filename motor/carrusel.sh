@@ -81,7 +81,8 @@ hay_cupo() {  # <imagenes que se van a pedir>
 imagenes_de_sesion() { find "$GEN/$1" -type f -name '*.png' -print0 2>/dev/null | xargs -0 ls -tr 2>/dev/null; }
 siguiente_log() { local k=1; while [ -e "$1/_logs/${2}_$k.log" ]; do k=$((k+1)); done; echo "$1/_logs/${2}_$k.log"; }
 refs_marca() {  # rutas completas de las fotos de la marca, en orden
-  for f in $(dato fotos | tr ',' ' ') "$(dato tipografia)"; do echo "$MARCA/$f"; done
+  # fotos del personaje y después las referencias de estilo (1 a 3): el mismo orden que describe ficha.py en el prompt
+  local f; for f in ${(s:,:)"$(dato fotos)"} ${(s:,:)"$(dato tipografia)"}; do f="${f## }"; f="${f%% }"; [ -n "$f" ] && echo "$MARCA/$f"; done
 }
 llamar_codex() {  # <carpeta_trabajo> <prompt> <log> <ref>...  → escribe el log; devuelve el código de salida de codex
   local dir="$1" prompt="$2" log="$3"; shift 3
@@ -216,10 +217,15 @@ cmd_corregir() {  # <nombre> <n> "<cambio>"
   local k=1; while [ -e "$OUT/_versiones/${n}_v$k.png" ]; do k=$((k+1)); done
   local P="$OUT/_correcciones/slide_${n}_v$k.txt"
   # Cada corrección lleva las fotos del personaje: al editar, la cara pierde calidad copia a copia si no tiene la referencia.
-  printf 'Edita la imagen 1 (slide de un carrusel de Instagram, 4:5). Las imágenes 2 y 3 son fotos del personaje: su cara tiene que quedar exactamente como en esas fotos, nítida y con sus rasgos, aunque el resto del slide no cambie.\nMantén todo lo demás exactamente igual: pose, ropa, fondo, titular y textos.\nÚnico cambio: %s\nNo añadas ningún texto ni elemento nuevo. No pongas contador ni pie.\n\nINSTRUCCIÓN TÉCNICA: no leas skills ni archivos y no ejecutes ningún comando. Llama UNA sola vez a la herramienta de generación de imágenes con todo lo anterior y termina respondiendo solo '"'"'ok'"'"'.\n' "$cambio" > "$P"
+  # solo fotos del personaje (1 o 2): con una sola foto, la "segunda" era la referencia de estilo y Codex la tomaba por la cara
+  local FOTOS=() f; for f in ${(s:,:)"$(dato fotos)"}; do f="${f## }"; f="${f%% }"; [ -n "$f" ] && FOTOS+=("$MARCA/$f"); done
+  FOTOS=(${FOTOS[1,2]})  # sin comillas: con la lista vacía no deja un elemento vacío (zsh no parte por espacios)
+  [ ${#FOTOS} -gt 0 ] || { echo "FALTA_MARCA: este cliente no tiene fotos del personaje. Súbelas en Branding."; exit 1; }
+  local QUIEN="La imagen 2 es una foto del personaje: su cara tiene que quedar exactamente como en esa foto"
+  [ ${#FOTOS} -ge 2 ] && QUIEN="Las imágenes 2 y 3 son fotos del personaje: su cara tiene que quedar exactamente como en esas fotos"
+  printf 'Edita la imagen 1 (slide de un carrusel de Instagram, 4:5). %s, nítida y con sus rasgos, aunque el resto del slide no cambie.\nMantén todo lo demás exactamente igual: pose, ropa, fondo, titular y textos.\nÚnico cambio: %s\nNo añadas ningún texto ni elemento nuevo. No pongas contador ni pie.\n\nINSTRUCCIÓN TÉCNICA: no leas skills ni archivos y no ejecutes ningún comando. Llama UNA sola vez a la herramienta de generación de imágenes con todo lo anterior y termina respondiendo solo '"'"'ok'"'"'.\n' "$QUIEN" "$cambio" > "$P"
   local LOG=$(siguiente_log "$OUT" "slide_$n")
-  local FOTOS=("${(@f)$(refs_marca)}")
-  llamar_codex "$OUT" "$P" "$LOG" "$OUT/_sin_pie/$n.png" "${FOTOS[1]}" "${FOTOS[2]}"; local RC=$?
+  llamar_codex "$OUT" "$P" "$LOG" "$OUT/_sin_pie/$n.png" "${FOTOS[@]}"; local RC=$?
   [ $RC -eq 5 ] && exit 5
   [ "${ENSAYO:-0}" = "1" ] && exit 0
   local TOK=$(grep -A1 'tokens used' "$LOG" | tail -1) SID=$(grep -m1 "session id:" "$LOG" | awk '{print $3}')

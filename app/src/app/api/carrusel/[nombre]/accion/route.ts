@@ -5,7 +5,7 @@ import { cliente, cuerpoJson, motor, motorFondo, nombreSeguro, ordenEnCurso } fr
 
 export const dynamic = "force-dynamic";
 
-type Accion = { accion: "generar" | "corregir" | "cerrar" | "ficha_ia" | "revisar" | "descripcion" | "guardar_descripcion" | "variaciones" | "guardar_variaciones"; n?: number; cambio?: string; texto?: string; textos?: string[] };
+type Accion = { accion: "generar" | "corregir" | "cerrar" | "ficha_ia" | "revisar" | "descripcion" | "guardar_descripcion" | "variaciones" | "guardar_variaciones" | "elegir"; n?: number; cambio?: string; texto?: string; textos?: string[]; lista?: number[] };
 
 /** Las órdenes largas (generar, corregir, ficha_ia) se lanzan en segundo plano; la pantalla pregunta el estado cada pocos segundos. */
 export async function POST(req: Request, { params }: { params: Promise<{ nombre: string }> }) {
@@ -56,6 +56,17 @@ export async function POST(req: Request, { params }: { params: Promise<{ nombre:
   if (a.accion === "cerrar") {
     const r = await motor(["cerrar", nombre], { timeoutMs: 300_000 });
     return NextResponse.json({ ok: r.codigo === 0, texto: r.salida });
+  }
+  if (a.accion === "elegir") {
+    // Codex rehízo imágenes: la persona elige la buena de cada slide (números de _revisar/orden_NN.png, en orden de slide)
+    const lista = Array.isArray(a.lista) ? a.lista.filter((n) => Number.isInteger(n) && n > 0) : [];
+    if (!lista.length) return NextResponse.json({ error: "Elige una imagen para cada slide" }, { status: 400 });
+    if ((await ordenEnCurso()) === nombre) return NextResponse.json({ error: "Espera a que termine la orden en curso" }, { status: 409 });
+    const r = await motor(["elegir", nombre, lista.join(",")], { timeoutMs: 120_000 });
+    if (r.codigo !== 0) return NextResponse.json({ error: r.salida || "No se pudieron colocar" }, { status: 400 });
+    // la generación quedó como error ("sobran imágenes"); ya está resuelta, así que deja de mostrarse como fallo
+    await fs.writeFile(estadoSalida, JSON.stringify({ estado: "ok", orden: ["elegir", nombre, lista.join(",")], inicio: new Date().toISOString(), fin: new Date().toISOString(), codigo: 0, salida: r.salida }));
+    return NextResponse.json({ ok: true, texto: r.salida });
   }
   if (a.accion === "revisar") {
     const r = await motor(["revisar", nombre], { timeoutMs: 60_000 });

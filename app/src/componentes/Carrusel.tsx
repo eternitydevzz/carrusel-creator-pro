@@ -7,6 +7,7 @@ import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, FolderOpen, Loader2, Pe
 import { Aviso, Campo, Panel, Pastilla } from "@/componentes/ui";
 import { Descripcion } from "@/componentes/Descripcion";
 import { Visor } from "@/componentes/Visor";
+import { ElegirImagenes } from "@/componentes/ElegirImagenes";
 import type { Ficha, Slide } from "@/lib/motor";
 
 type Datos = {
@@ -15,6 +16,7 @@ type Datos = {
   estadoDescripcion: { estado: string; salida: string } | null; descripcion: string;
   estadoVariaciones: { estado: string; salida: string } | null; variaciones: string[];
   slides: { n: number; png: boolean; jpg: boolean; version: number }[]; progreso: number; cerrado: boolean; original: string[]; cupo: string;
+  revisar: string[]; // imágenes de más cuando Codex rehízo alguna: se elige la buena de cada slide
 };
 
 const CASILLAS: { k: string; etiqueta: string; ayuda?: string; larga?: boolean }[] = [
@@ -76,6 +78,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
     if (d.cerrado) return "cerrado";
     if (d.estado?.estado === "en_curso") return "generando";
     if (d.slides.some((s) => s.png)) return "revision";
+    if (d.revisar.length) return "elegir";
     if (d.estadoFicha?.estado === "en_curso") return "redactando";
     if (d.ficha) return "ficha";
     return "sin_ficha";
@@ -143,7 +146,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
   // "Cuenta 'x': 29 imágenes en las últimas 24 h (tope 60)" → cuántas quedan hoy
   const cupoM = /(\d+) imágenes .*tope (\d+)/.exec(d.cupo);
   const quedan = cupoM ? Math.max(0, Number(cupoM[2]) - Number(cupoM[1])) : null;
-  const etiquetaFase = fase === "cerrado" ? "Listo para subir" : fase === "generando" ? (corrigiendoAhora ? "Corrigiendo" : "Generando") : fase === "redactando" ? "Redactando la ficha" : fase === "revision" ? "En revisión" : fase === "ficha" ? "Ficha" : "Sin ficha";
+  const etiquetaFase = fase === "cerrado" ? "Listo para subir" : fase === "generando" ? (corrigiendoAhora ? "Corrigiendo" : "Generando") : fase === "redactando" ? "Redactando la ficha" : fase === "revision" ? "En revisión" : fase === "elegir" ? "Elegir imágenes" : fase === "ficha" ? "Ficha" : "Sin ficha";
 
   return (
     <div className="flex flex-col gap-6">
@@ -200,6 +203,13 @@ export function Carrusel({ nombre }: { nombre: string }) {
             <button className="boton" onClick={() => { setFicha({ cabecera: { carrusel: nombre, slides: String(d.original.length || 4), cta: "", viral: d.original.length ? `virales/${nombre}` : "ninguno", bandera: "no" }, slides: Array.from({ length: d.original.length || 4 }, () => ({ titular: "", azul: "", idea: "", texto_escena: "ninguno", manos: "" })) }); setSucia(true); }}>Escribirla yo</button>
           </div>
         </Panel>
+      )}
+
+      {fase === "elegir" && <ElegirImagenes nombre={nombre} archivos={d.revisar} slides={n} img={img} onHecho={cargar} />}
+
+      {/* si la primera generación falló, se dice aquí; antes la pantalla volvía a la ficha sin explicar nada (en revisión ya se avisa abajo) */}
+      {d.estado?.estado === "error" && (fase === "ficha" || fase === "sin_ficha") && (
+        <Aviso tono="danger"><div className="mb-1 font-semibold">{d.estado.orden[0] === "corregir" ? `La corrección del slide ${d.estado.orden[2]} falló` : "La generación falló"}</div><pre className="whitespace-pre-wrap font-sans">{d.estado.salida.trim().split("\n").slice(-4).join("\n")}</pre></Aviso>
       )}
 
       {(fase === "ficha" || (fase === "sin_ficha" && ficha)) && ficha && (

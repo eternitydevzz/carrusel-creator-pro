@@ -31,6 +31,8 @@ export async function GET(_req: Request, { params }: { params: Promise<{ nombre:
   const estadoFicha = await leerEstado(path.join(D, "virales", nombre, "_estado_ficha.json"));
   const estadoDescripcion = await leerEstado(path.join(salida, "_estado_descripcion.json"));
   const descripcion = await leerTexto(path.join(salida, "descripcion.txt"));
+  // si Codex rehízo imágenes y no dijo cuáles valen, quedan aquí para elegirlas en la pantalla
+  const revisar = (await fs.readdir(path.join(salida, "_revisar")).catch(() => [] as string[])).filter((f) => /^orden_\d+\.png$/.test(f)).sort();
   const estadoVariaciones = await leerEstado(path.join(salida, "_estado_variaciones.json"));
   // variaciones.txt: bloques separados por "=== VARIACIÓN N ===" (mismo formato que escribe el motor)
   const variaciones = (await leerTexto(path.join(salida, "variaciones.txt"))).split(/^=== VARIACI[ÓO]N \d+ ===\s*$/m).slice(1).map((v) => v.trim()).filter(Boolean);
@@ -57,7 +59,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ nombre:
 
   const cupo = (await motor(["cupo"], { timeoutMs: 15_000 })).salida;
 
-  return NextResponse.json({ nombre, fichaTexto: fichaTxt, ficha: fichaTxt ? parsearFicha(fichaTxt) : null, comprobacion, estado, estadoFicha, estadoDescripcion, descripcion, estadoVariaciones, variaciones, slides, progreso, cerrado, original, cupo });
+  return NextResponse.json({ nombre, fichaTexto: fichaTxt, ficha: fichaTxt ? parsearFicha(fichaTxt) : null, comprobacion, estado, estadoFicha, estadoDescripcion, descripcion, estadoVariaciones, variaciones, revisar, slides, progreso, cerrado, original, cupo });
 }
 
 export async function DELETE(_req: Request, { params }: { params: Promise<{ nombre: string }> }) {

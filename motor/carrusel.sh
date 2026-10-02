@@ -8,6 +8,7 @@
 #   carrusel.sh generar <nombre>                    comprueba, monta el prompt, genera con Codex, recorta, estampa y hace la hoja
 #   carrusel.sh corregir <nombre> <n> "<cambio>"    corrige un slide editándolo y lo vuelve a estampar (1 imagen)
 #   carrusel.sh revisar <nombre>                    hoja del carrusel y tira de pies, para revisar
+#   carrusel.sh elegir <nombre> <a,b,c>             si Codex rehízo imágenes: coloca las buenas de _revisar/ como slides 1..N
 #   carrusel.sh cerrar <nombre>                     JPG limpios sin metadatos; borra el material de trabajo y las copias de Codex
 #   carrusel.sh descripcion <nombre>                Claude Code escribe la descripción de Instagram en salida/<nombre>/descripcion.txt
 #   carrusel.sh encoger <nombre> <n> [factor] [y]  encoge la escena (0.92; y = px que baja) para no pisar pie ni contador; 0 imágenes
@@ -114,17 +115,22 @@ kids = [e["node"] for e in m.get("edge_sidecar_to_children", {}).get("edges", []
 def bajar(u, p):
     rq = urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"})
     with urllib.request.urlopen(rq, timeout=120) as s, open(p, "wb") as f: f.write(s.read())
-n = 0
+n = 0; videos = []
 for i, kd in enumerate(kids, 1):
-    if kd.get("is_video"): continue
+    # los slides de vídeo también cuentan: se baja su portada (la imagen que enseña Instagram antes de reproducirlo).
+    # Antes se saltaban y un carrusel de 6 con 3 vídeos se quedaba en 3 slides (01, 04, 06), sin avisar.
     res = sorted(kd.get("display_resources") or [], key=lambda x: x.get("config_width", 0))
-    bajar(res[-1]["src"] if res else kd["display_url"], f"{dest}/slide_{i:02d}.jpg"); n += 1
+    src = res[-1]["src"] if res else kd.get("display_url")
+    if not src: print(f"AVISO: el slide {i} no trae imagen; se omite"); continue
+    bajar(src, f"{dest}/slide_{i:02d}.jpg"); n += 1
+    if kd.get("is_video"): videos.append(i)
 cap = (m.get("edge_media_to_caption", {}).get("edges") or [{}])[0].get("node", {}).get("text", "")
 user = (m.get("owner") or {}).get("username", "")
 likes = (m.get("edge_media_preview_like") or {}).get("count", "")
 com = (m.get("edge_media_to_parent_comment") or m.get("edge_media_preview_comment") or {}).get("count", "")
-open(f"{dest}/info.txt", "w").write(f"URL: {url}\nCuenta: @{user}\nComentarios: {com}\nLikes: {likes}\nSlides: {n}\n\nTexto:\n{cap}\n")
-print(f"{n} slides descargados en {dest}")
+nota = f"Slides de vídeo (se usa su portada): {', '.join(map(str, videos))}\n" if videos else ""
+open(f"{dest}/info.txt", "w").write(f"URL: {url}\nCuenta: @{user}\nComentarios: {com}\nLikes: {likes}\nSlides: {n}\n{nota}\nTexto:\n{cap}\n")
+print(f"{n} slides descargados en {dest}" + (f" ({len(videos)} de vídeo: se usa su portada)" if videos else ""))
 EOF
   for f in "$dest"/slide_*.jpg; do sips -s format jpeg "$f" --out "$f" >/dev/null 2>&1; done
   echo "Siguiente paso: mirar los slides, escribir virales/$nombre/descripcion.md y la ficha (carrusel.sh nueva $nombre <N>)."
@@ -179,10 +185,11 @@ cmd_generar() {  # <nombre>
   # la ficha guarda la ruta del original; si ya no existe (datos movidos), se busca en la carpeta del cliente
   [ -n "$V" ] && [ ! -d "$V" ] && [ -d "$VIRALES/${V:t}" ] && V="$VIRALES/${V:t}"
   mkdir -p "$OUT/_logs" "$OUT/_sin_pie" "$OUT/_viral"
+  [ -z "${RECOGER_SID:-}" ] && rm -rf "$OUT/_revisar"  # las que sobraron en una generación anterior ya no valen
   local H=0
   if [ -d "$V" ]; then H=$(cmd_hojas "$V" "$OUT/_viral") || { echo "FALLO al hacer las hojas del viral"; exit 1; }; fi
   python3 "$AQUI/ficha.py" prompt "$F" "$OUT/_prompt.txt" "$H" || exit 1
-  { cat "$OUT/_prompt.txt"; echo; echo "INSTRUCCIÓN TÉCNICA: crea el carrusel completo, los $N slides en orden, en esta misma respuesta. No ejecutes comandos ni añadas texto con código. Al terminar responde solo 'ok'."; } > "$OUT/_prompt_enviado.txt"
+  { cat "$OUT/_prompt.txt"; echo; echo "INSTRUCCIÓN TÉCNICA: crea el carrusel completo, los $N slides en orden, en esta misma respuesta. No ejecutes comandos ni añadas texto con código. Si rehaces alguna imagen, al terminar responde solo con FINAL: y los números de la imagen buena de cada slide, en orden de slide, contando las imágenes en el orden en que las creaste empezando en 1 (por ejemplo, con 3 slides y los dos primeros rehechos, la palabra FINAL, dos puntos y luego 2,4,5). Si no rehiciste ninguna, responde solo 'ok'."; } > "$OUT/_prompt_enviado.txt"
   local REFS=("${(@f)$(refs_marca)}"); [ "$H" -gt 0 ] && for h in $(seq 1 $H); do REFS+=("$OUT/_viral/viral_hoja_$h.jpg"); done
   REFS+=("$(guia_zonas $N)")
   local SID TOK LIM=0 RC=0 LOG
@@ -200,8 +207,16 @@ cmd_generar() {  # <nombre>
   fi
   local FILES=("${(@f)$(imagenes_de_sesion "$SID")}"); FILES=(${FILES:#}); local K=${#FILES}
   [ -z "${RECOGER_SID:-}" ] && anotar_cupo "$nombre" carrusel "$K" "$TOK"
-  if [ $K -gt $N ]; then mkdir -p "$OUT/_revisar"; local i=0; for f in "${FILES[@]}"; do i=$((i+1)); ajustar_4x5 "$f" "$OUT/_revisar/orden_$(printf '%02d' $i).png"; done
-    echo "SOBRAN: Codex generó $K imágenes para $N slides. Están en $OUT/_revisar/ sin numerar. Míralas y numéralas a mano."; exit 4; fi
+  if [ $K -gt $N ]; then
+    # Codex rehízo alguna imagen. Si dijo cuáles son las buenas ("FINAL: 2,4,5"), se usan esas; si no, se guardan todas
+    # en _revisar/ y se eligen en la app (o con: carrusel.sh elegir <nombre> 2,4,5). Antes se paraba sin más.
+    mkdir -p "$OUT/_revisar"; local i=0; for f in "${FILES[@]}"; do i=$((i+1)); ajustar_4x5 "$f" "$OUT/_revisar/orden_$(printf '%02d' $i).png"; done
+    # el log repite el prompt: solo cuenta lo que Codex escribió después de él
+    local FINAL=$(sed 's/\x1b\[[0-9;]*m//g' "$LOG" 2>/dev/null | awk '/INSTRUCCIÓN TÉCNICA/{t=""; next} {t=t $0 "\n"} END{printf "%s", t}' | grep -oE 'FINAL: *[0-9 ,]+' | tail -1 | sed 's/FINAL: *//; s/ //g')
+    if [ -n "$FINAL" ] && cmd_elegir "$nombre" "$FINAL" quieto; then
+      echo "OK carrusel $nombre: $N/$N slides · Codex rehízo $((K-N)) y eligió $FINAL · tokens: $TOK · imágenes: $K · cuenta '$CUENTA': $(gastadas_24h) en 24 h"; return 0
+    fi
+    echo "SOBRAN: Codex generó $K imágenes para $N slides (rehízo alguna). Elige en la app cuál es la buena de cada slide."; exit 4; fi
   local i=0; for f in "${FILES[@]}"; do i=$((i+1)); ajustar_4x5 "$f" "$OUT/_sin_pie/$i.png" || exit 1; estampar "$OUT" $i $N || exit 1; done
   [ $LIM -eq 1 ] && { echo "LIMITE_DE_USO tras $i de $N slides · tokens: $TOK"; exit 2; }
   [ $i -lt $N ] && { echo "INCOMPLETO: $i/$N slides (codex exit $RC) · tokens: $TOK · ver $LOG"; exit 1; }
@@ -237,6 +252,16 @@ cmd_corregir() {  # <nombre> <n> "<cambio>"
   cp "$OUT/_sin_pie/$n.png" "$OUT/_versiones/${n}_v$k.png"
   ajustar_4x5 "${FILES[-1]}" "$OUT/_sin_pie/$n.png" && estampar "$OUT" $n $N && cmd_revisar "$nombre" >/dev/null
   echo "OK slide $n corregido · tokens: $TOK · versión anterior en _versiones/${n}_v$k.png · cuenta '$CUENTA': $(gastadas_24h) en 24 h"
+}
+
+cmd_elegir() {  # <nombre> <a,b,c> [quieto]: coloca las imágenes de _revisar/ como slides 1..N, en ese orden. No gasta imágenes.
+  local nombre="$1" lista="$2" OUT="$SALIDA/$1"; local N=$(cab "$nombre" slides)
+  local nums=(${(s:,:)lista}); [ ${#nums} -eq $N ] || { echo "Hacen falta $N números (uno por slide) y llegaron ${#nums}: $lista"; return 1; }
+  local k; for k in "${nums[@]}"; do [[ "$k" =~ '^[0-9]+$' ]] && [ -f "$OUT/_revisar/orden_$(printf '%02d' $k).png" ] || { echo "No existe la imagen $k en _revisar/"; return 1; }; done
+  mkdir -p "$OUT/_sin_pie"; local i=0
+  for k in "${nums[@]}"; do i=$((i+1)); cp "$OUT/_revisar/orden_$(printf '%02d' $k).png" "$OUT/_sin_pie/$i.png" && estampar "$OUT" $i $N || return 1; done
+  cmd_revisar "$nombre" >/dev/null
+  [ "${3:-}" = "quieto" ] || echo "OK carrusel $nombre: slides elegidos $lista"
 }
 
 cmd_revisar() {  # <nombre>: hoja + tira de pies
@@ -357,17 +382,18 @@ cmd_cupo() { echo "Cuenta '$CUENTA': $(gastadas_24h) imágenes en las últimas 2
 [ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && export PIE_FICHA="$(ficha_de "$2")"
 
 case "${1:-}" in
-  bajar)     [ $# -eq 3 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_bajar "$2" "$3" ;;
-  nueva)     [ $# -eq 3 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_nueva "$2" "$3" ;;
-  ficha_ia)  [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_ficha_ia "$2" ;;
-  comprobar) [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_comprobar "$2" ;;
-  generar)   [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_generar "$2" ;;
-  corregir)  [ $# -eq 4 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_corregir "$2" "$3" "$4" ;;
-  revisar)   [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_revisar "$2" ;;
-  cerrar)    [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_cerrar "$2" ;;
-  descripcion) [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_descripcion "$2" ;;
-  encoger)   [ $# -ge 3 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_encoger "$2" "$3" "${4:-0.92}" "${5:-0}" ;;
-  variaciones) [ $# -eq 2 ] || { sed -n '2,15p' "$0"; exit 64; }; cmd_variaciones "$2" ;;
+  bajar)     [ $# -eq 3 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_bajar "$2" "$3" ;;
+  nueva)     [ $# -eq 3 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_nueva "$2" "$3" ;;
+  ficha_ia)  [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_ficha_ia "$2" ;;
+  comprobar) [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_comprobar "$2" ;;
+  generar)   [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_generar "$2" ;;
+  corregir)  [ $# -eq 4 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_corregir "$2" "$3" "$4" ;;
+  revisar)   [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_revisar "$2" ;;
+  elegir)    [ $# -eq 3 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_elegir "$2" "$3" ;;
+  cerrar)    [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_cerrar "$2" ;;
+  descripcion) [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_descripcion "$2" ;;
+  encoger)   [ $# -ge 3 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_encoger "$2" "$3" "${4:-0.92}" "${5:-0}" ;;
+  variaciones) [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_variaciones "$2" ;;
   cupo)      cmd_cupo ;;
-  *)         sed -n '2,15p' "$0"; exit 64 ;;
+  *)         sed -n '2,16p' "$0"; exit 64 ;;
 esac

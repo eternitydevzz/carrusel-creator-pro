@@ -93,6 +93,14 @@ Tus datos no se tocan.
 
 El motor usa opciones concretas de Codex CLI y de Claude Code. Está probado con **Codex CLI 0.158.0** y **Claude Code 2.1**. El instalador pone esa versión de Codex y avisa si tienes otra. Si al generar falla con un error de opciones, vuelve a esa versión: `npm install -g @openai/codex@0.158.0`.
 
+## Pruebas sin gasto
+
+```bash
+motor/pruebas/correr.sh
+```
+
+Prueba el motor con respuestas guardadas de ScrapeCreators y de Codex (carrusel con vídeos, foto suelta, reel, Codex que rehace imágenes, límite de uso, correcciones que fallan, reglas del personaje…). No gasta imágenes ni créditos y no toca `datos/`. Lánzalo después de cambiar algo del motor: tiene que terminar con "fallan 0". En `motor/pruebas/codex/*/origen` pone qué casos son reales y cuáles están construidos a mano.
+
 ## Si algo pisa el pie
 
 A veces Codex lleva la escena hasta abajo y tapa el @. Sin gastar imágenes: `motor/carrusel.sh encoger <carrusel> <n>` encoge la escena de ese slide para dejar libre el pie (con `<factor> <px>` al final se puede encoger más o bajarla si el titular choca con el contador).

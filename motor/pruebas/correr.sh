@@ -114,11 +114,15 @@ prueba elegir_2_4_5 "3 slides con su pie" p_elegir_bien
 fotos() { sed -i '' "s|^fotos: .*|fotos: $1|" "$P/marca/marca.txt"; }
 prompt_de() { original "$1" 3; SALIDA="$(DATOS="$D" DATOS_PERFIL="$P" python3 "$MOTOR/ficha.py" prompt "$P/fichas/$1.md" "$D/prompt.txt" 1 2>&1)"; RC=$?; [ $RC -eq 0 ]; }
 p_sin_cliente() { original sin_persona_3 3; motor comprobar sin_persona_3; [ $RC -ne 0 ] && [[ "$SALIDA" == *"ningún slide"* ]]; }
-p_mascota() { prompt_de con_persona_3 && ! grep -q "La mascota o la persona del original tampoco aparecen" "$D/prompt.txt"; }
+p_mascota() { prompt_de con_persona_3 && ! grep -q "La mascota o la persona del original tampoco aparecen" "$D/prompt.txt" && grep -q "se queda como en el original, sin la cara de nadie" "$D/prompt.txt"; }
+p_cliente_al_final() { original con_persona_3 3; motor comprobar con_persona_3; [ $RC -eq 0 ]; }
+p_regla_ficha() { grep -q 'Si el original no lleva a ninguna persona en ningún slide, pon "si" en el último slide' "$MOTOR/PROMPT_FICHA.txt"; }
 p_una_foto() { fotos "fotos/personaje_1.jpg"; prompt_de con_persona_3 && grep -q "la foto 1" "$D/prompt.txt" && ! grep -q "las fotos 1" "$D/prompt.txt"; }
 p_tres_fotos() { fotos "fotos/personaje_1.jpg, fotos/personaje_2.jpg, fotos/personaje_3.jpg"; prompt_de con_persona_3 && grep -q "las fotos 1, 2 y 3" "$D/prompt.txt"; }
 prueba ficha_sin_el_cliente_en_ningun_slide "la comprobación frena: el cliente tiene que salir al menos al final" p_sin_cliente
-prueba prompt_la_mascota_se_queda "el prompt no manda quitar la mascota del original" p_mascota
+prueba prompt_la_mascota_se_queda "la mascota se queda como en el original, sin la cara de nadie" p_mascota
+prueba ficha_con_el_cliente_en_el_ultimo "la comprobación la da por buena" p_cliente_al_final
+prueba regla_de_la_ficha_ia "el prompt de la ficha pide al cliente en el último si el original no lleva a nadie" p_regla_ficha
 prueba prompt_con_1_foto "habla de 'la foto 1'" p_una_foto
 prueba prompt_con_3_fotos "habla de 'las fotos 1, 2 y 3'" p_tres_fotos
 

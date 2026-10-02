@@ -104,6 +104,9 @@ def comprobar(path):
                 fallos.append(f"Slide {k}: el titular tiene {palabras} palabras; portada y cierre van de 5 a 10")
             if s.get("azul") and s["azul"].strip('"') not in " ".join(lineas):
                 fallos.append(f"Slide {k}: 'azul' ({s['azul']}) no está dentro del titular")
+    # el cliente tiene que dar la cara al menos una vez: si el original no lleva a nadie, sale en el último slide
+    if slides and all(sin_personaje(s) for s in slides.values()):
+        fallos.append(f"El cliente no sale en ningún slide: pon 'personaje: si' al menos en el último (slide {max(slides)}), con sus manos y su expresión")
     # cifras: todas tienen que existir en el carrusel original
     viral = cab.get("viral", "")
     fuente = ""
@@ -190,7 +193,8 @@ def render_slide(k, s, n):
             else:
                 out.append("SIN PERSONAJE en este slide: el personaje de las fotos no aparece. Los muñecos de píxel del original SÍ aparecen, como en el slide original: son los agentes de AI.")
         else:
-            out.append("SIN PERSONAJE en este slide: aquí no aparece ninguna persona. La escena ocupa todo el encuadre, como en el slide original. La mascota o la persona del original tampoco aparecen.")
+            # la mascota, el muñeco o el objeto del original se quedan (decisión de Cristian, 2-10-2026); antes se quitaban
+            out.append("SIN PERSONAJE en este slide: aquí no aparece ninguna persona. Si el slide original lleva una mascota, un muñeco o un objeto protagonista, se queda como en el original, sin la cara de nadie. La escena ocupa todo el encuadre, como en el slide original.")
         return "\n".join(out)
     ropa = s.get("ropa") or leer_marca().get("ropa", "").split(".")[0]
     manos = s.get("manos") or MANOS[(k - 1) % len(MANOS)]

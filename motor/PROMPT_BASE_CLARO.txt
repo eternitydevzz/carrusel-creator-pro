@@ -5,7 +5,7 @@ Crea un carrusel vertical 4:5 (1080 x 1350 px) para Instagram sobre AI, de {N} s
 
 LO FIJO (no se toca):
 - Estilo del original: fondo claro color crema, papel de textura suave, como en los slides originales. Los mismos muñecos de píxel 3D (vóxel) del original, con sus gorros y accesorios, sus escritorios de madera, portátiles, plantas, libros, notas de papel pegadas con cinta y flechas dibujadas a mano. Las referencias de estilo de la marca adjuntas son solo referencia de tipografía y acabado, no de fondo ni de estilo de escena.
-- Personaje: el de {FOTOS_PERSONAJE}. SOLO aparece en los slides cuyo guion lo pide. Misma cara y mismos rasgos; las fotos son solo para su identidad: no copies ninguna tal cual. En los slides "SIN PERSONAJE" no aparece él; los muñecos de píxel sí.
+- Personaje: el de {FOTOS_PERSONAJE}. SOLO aparece en los slides cuyo guion lo pide. Misma cara y mismos rasgos; las fotos son solo para su identidad: no copies ninguna tal cual. En los slides "SIN PERSONAJE" no aparece él; las mascotas, muñecos u objetos del original sí, como en el original.
 - Ropa del personaje: {ROPA}.
 - Manos del personaje: una sola acción, la que indica el guion. Nunca manos de más ni dedos raros.
 - Azul de la marca: {AZUL}, sólido y plano, sin degradado. Ni cian ni turquesa. Todo el naranja del original pasa a este azul: titulares resaltados, líneas que conectan, botones, números, casillas y detalles. Los gorros y la ropa de los muñecos conservan sus colores. Los logos de las herramientas conservan los suyos.

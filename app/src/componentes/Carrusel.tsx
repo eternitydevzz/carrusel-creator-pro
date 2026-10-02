@@ -28,7 +28,7 @@ const CASILLAS: { k: string; etiqueta: string; ayuda?: string; larga?: boolean }
   { k: "cta_grande", etiqueta: "Llamada a la acción grande" },
   { k: "idea", etiqueta: "Idea del original", ayuda: "Qué enseña ese slide y qué cuenta. Es la referencia visual.", larga: true },
   { k: "texto_escena", etiqueta: "Texto dentro de la escena", ayuda: 'Entre comillas y separados por comas, o "ninguno".', larga: true },
-  { k: "personaje", etiqueta: "Personaje en el slide", ayuda: "No, cuando el original tampoco lleva a su persona (portadas con mascota, iconos…)." },
+  { k: "personaje", etiqueta: "Personaje en el slide", ayuda: "Sí donde el original lleva a una persona. No donde lleva una mascota, un muñeco u objeto (se quedan como en el original). Si el original no lleva a nadie, el cliente sale en el último." },
   { k: "manos", etiqueta: "Manos", ayuda: "Una sola acción." },
   { k: "expresion", etiqueta: "Expresión" },
   { k: "texto", etiqueta: "Texto libre del slide", ayuda: "Solo si no hay titular: el generador saca el titular de aquí.", larga: true },

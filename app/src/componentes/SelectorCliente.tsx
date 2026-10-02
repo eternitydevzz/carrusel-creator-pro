@@ -3,11 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Check, ChevronsUpDown, Plus } from "lucide-react";
+import { recargarSinIntro } from "@/lib/navegacion";
 
 type Perfil = { id: string; nombre: string; handle: string; azul: string; foto: string; carruseles: number; activo: boolean; completo: boolean };
 
 /** Recarga la app en Inicio: todas las pantallas vuelven a pedir sus datos ya con el cliente nuevo. */
-function irAInicio(ruta = "/") { window.location.assign(new URL(ruta, window.location.origin).href); }
+function irAInicio(ruta = "/") { recargarSinIntro(ruta); }
 
 function Avatar({ p, tam = 34 }: { p: Perfil; tam?: number }) {
   const [fallo, setFallo] = useState(false);

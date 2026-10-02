@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Check, Loader2, Trash2 } from "lucide-react";
 import { Aviso, Campo, Panel } from "@/componentes/ui";
+import { recargarSinIntro } from "@/lib/navegacion";
 
 type Perfil = { id: string; nombre: string; activo: boolean };
 type Ubicacion = Record<string, string | number>;
@@ -49,7 +50,7 @@ export function PanelCliente() {
     if (!confirm(`¿Eliminar el cliente "${activo.nombre}"? Su marca y sus carruseles se mueven a la papelera (datos/_papelera) y dejan de verse en la app.`)) return;
     const r = await fetch("/api/perfiles", { method: "DELETE", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id: activo.id }) });
     if (!r.ok) { setAviso({ tono: "danger", texto: (await r.json()).error ?? "No se pudo eliminar" }); return; }
-    window.location.assign(new URL("/", window.location.origin).href);
+    recargarSinIntro("/");
   }
 
   return (

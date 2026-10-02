@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Volume2, VolumeX, X } from "lucide-react";
 import { Sfx, iniciarSonidos } from "@/lib/sonidos";
+import { recargarSinIntro } from "@/lib/navegacion";
 
 /* Primer arranque: deja la marca y las conexiones configuradas en 4 bloques.
    Guarda en los mismos sitios que Branding y Ajustes (/api/marca, /api/marca/foto, /api/ajustes). */
@@ -191,7 +192,7 @@ export function Bienvenida() {
   async function cancelar() {
     Sfx.click();
     await fetch("/api/perfiles", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "cancelar" }) }).catch(() => {});
-    window.location.assign(new URL("/", window.location.origin).href);
+    recargarSinIntro("/");
   }
   function atras() { if (paso > 0) { Sfx.click(); setError(""); setPaso(paso - 1); } }
 

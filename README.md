@@ -41,6 +41,8 @@ Si Codex no está conectado, la bienvenida te da la orden exacta para la Termina
 
 Para probar con otra marca sin tocar la tuya, arranca con otra carpeta de datos: `CCP_DATOS=/ruta/a/otra/carpeta ./arrancar.sh`.
 
+Al abrir o recargar la app sale la intro de Código MaestrIA (unos 3 segundos; se salta con un clic, Escape o Enter). Cuando la app recarga sola (al cambiar de cliente) no sale.
+
 ## Varios clientes
 
 Cada cliente tiene **su marca** (fotos, @, color, lema, ángulo, ropa), **su ubicación** para los metadatos y **su biblioteca** de carruseles. Se cambia de cliente con el selector de arriba en la barra lateral; ahí también está **"+ Nuevo cliente"**, que abre una bienvenida corta (9 pasos) para dejar su marca lista. Nombre, ubicación y **Eliminar cliente** están en **Branding**.

@@ -198,6 +198,29 @@ export function serializarFicha(f: Ficha): string {
   return out.join("\n") + "\n";
 }
 
+/** Casillas de un slide donde la comprobación revisa las cifras (las mismas que ficha.py). */
+const CASILLAS_CON_CIFRAS = ["titular", "debajo", "arriba", "texto_escena", "cta_grande", "texto"];
+const CIFRA = /\d[\d.,]*\s?(?:mil millones|millones|millón|millon|millions?|billions?|mil|bn|[kKmMbB])?(?![\wáéíóúñ])/gi;
+function cifrasDe(f: Ficha): Set<string> {
+  const s = new Set<string>();
+  for (const sl of f.slides) for (const c of CASILLAS_CON_CIFRAS) for (const m of (sl[c] ?? "").match(CIFRA) ?? []) {
+    const cifra = m.trim().replace(/[.,]+$/, "");
+    if (cifra.replace(/\D/g, "").length >= 2) s.add(cifra);
+  }
+  return s;
+}
+/** Una cifra que la persona escribe en el editor es suya: se añade a "Cifras confirmadas" para que la comprobación no la frene.
+ *  Solo cuenta lo que no estaba en la ficha anterior, así que una cifra inventada por la IA sigue frenándose. */
+export function confirmarCifrasEscritas(previa: Ficha | null, nueva: Ficha): Ficha {
+  if (!previa) return nueva;
+  const conf = nueva.cabecera.cifras_confirmadas ?? "";
+  if (conf.trim().toLowerCase().startsWith("todas")) return nueva;
+  const antes = cifrasDe(previa), yaConfirmadas = new Set(conf.split(",").map((x) => x.trim()).filter(Boolean));
+  const nuevas = [...cifrasDe(nueva)].filter((c) => !antes.has(c) && !yaConfirmadas.has(c));
+  if (!nuevas.length) return nueva;
+  return { ...nueva, cabecera: { ...nueva.cabecera, cifras_confirmadas: [...yaConfirmadas, ...nuevas].join(", ") } };
+}
+
 /** Cambia el nombre de un carrusel: ficha, original y salida. */
 export async function renombrar(viejo: string, nuevo: string) {
   const D = cliente();
@@ -219,7 +242,7 @@ export async function listarCarruseles(): Promise<Resumen[]> {
   const D = cliente();
   const nombres = new Set<string>();
   for (const carpeta of ["fichas", "salida", "virales"]) {
-    try { for (const f of await fs.readdir(path.join(D, carpeta))) if (!f.startsWith("_") && !f.startsWith(".")) nombres.add(f.replace(/\.md$/, "")); } catch { /* vacío */ }
+    try { for (const f of await fs.readdir(path.join(D, carpeta))) if (!f.startsWith("_") && !f.startsWith(".") && !f.endsWith("_originales")) nombres.add(f.replace(/\.md$/, "")); } catch { /* vacío */ }
   }
   const lista: Resumen[] = [];
   for (const nombre of [...nombres].sort()) {

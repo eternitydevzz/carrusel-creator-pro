@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { Check, Copy, FileText, Layers, Loader2, RefreshCw, Save } from "lucide-react";
 import { Aviso, Panel } from "@/componentes/ui";
 import { Variaciones } from "@/componentes/Variaciones";
+import { AvisoClaude } from "@/componentes/AvisoClaude";
 
 type Estado = { estado: string; salida: string } | null;
 
@@ -69,9 +70,9 @@ export function Descripcion({ nombre, texto, estado, variaciones, estadoVariacio
         </div>
       </div>
       {escribiendo && <Aviso tono="info">Claude está escribiendo la descripción. Tarda unos 15–30 segundos.</Aviso>}
-      {estado?.estado === "error" && !escribiendo && <div className="mb-3"><Aviso tono="danger"><pre className="whitespace-pre-wrap font-sans">{estado.salida}</pre></Aviso></div>}
+      {estado?.estado === "error" && !escribiendo && <div className="mb-3"><AvisoClaude salida={estado.salida} /></div>}
       {variando && <div className="mb-3"><Aviso tono="info">Claude está escribiendo las 5 variaciones. Tarda unos 30–60 segundos.</Aviso></div>}
-      {estadoVariaciones?.estado === "error" && !variando && <div className="mb-3"><Aviso tono="danger"><pre className="whitespace-pre-wrap font-sans">{estadoVariaciones.salida}</pre></Aviso></div>}
+      {estadoVariaciones?.estado === "error" && !variando && <div className="mb-3"><AvisoClaude salida={estadoVariaciones.salida} /></div>}
       {aviso && <div className="mb-3"><Aviso tono={aviso.tono}>{aviso.texto}</Aviso></div>}
       {texto && (
         <>

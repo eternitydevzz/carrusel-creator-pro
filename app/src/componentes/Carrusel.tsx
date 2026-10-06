@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ArrowDown, ArrowLeft, ArrowUp, Check, Download, FolderOpen, Loader2, Pencil, RefreshCw, Sparkles, Trash2, Wand2, X } from "lucide-react";
 import { Aviso, Campo, Panel, Pastilla } from "@/componentes/ui";
 import { Descripcion } from "@/componentes/Descripcion";
+import { AvisoClaude } from "@/componentes/AvisoClaude";
 import { Visor } from "@/componentes/Visor";
 import { ElegirImagenes } from "@/componentes/ElegirImagenes";
 import type { Ficha, Slide } from "@/lib/motor";
@@ -198,7 +199,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
       {fase === "sin_ficha" && !ficha && (
         <Panel fuerte className="aparece">
           <h2 className="mb-2 text-[16px] font-semibold">Este carrusel no tiene ficha</h2>
-          {d.estadoFicha?.estado === "error" && <div className="mb-3"><Aviso tono="danger"><pre className="whitespace-pre-wrap font-sans">{d.estadoFicha.salida}</pre></Aviso></div>}
+          {d.estadoFicha?.estado === "error" && <div className="mb-3"><AvisoClaude salida={d.estadoFicha.salida} /></div>}
           <div className="flex flex-wrap gap-2">
             {d.original.length > 0 && <button className="boton boton-primario" disabled={ocupado} onClick={() => accion({ accion: "ficha_ia" })}><Sparkles size={16} /> Que Claude la redacte</button>}
             <button className="boton" onClick={() => { setFicha({ cabecera: { carrusel: nombre, slides: String(d.original.length || 4), cta: "", viral: d.original.length ? `virales/${nombre}` : "ninguno", bandera: "no" }, slides: Array.from({ length: d.original.length || 4 }, () => ({ titular: "", azul: "", idea: "", texto_escena: "ninguno", manos: "" })) }); setSucia(true); }}>Escribirla yo</button>
@@ -214,7 +215,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
       )}
 
       {fase === "ficha" && d.estadoFicha?.estado === "error" && (
-        <Aviso tono="danger"><div className="mb-1 font-semibold">No se pudo volver a redactar la ficha (se mantiene la anterior)</div><pre className="whitespace-pre-wrap font-sans">{d.estadoFicha.salida.trim().split("\n").slice(-4).join("\n")}</pre></Aviso>
+        <AvisoClaude salida={d.estadoFicha.salida} recorte={4} titulo="No se pudo volver a redactar la ficha (se mantiene la anterior)" />
       )}
 
       {(fase === "ficha" || (fase === "sin_ficha" && ficha)) && ficha && (

@@ -169,7 +169,7 @@ def comprobar(path):
                         continue
                     # vale si está escrita igual o si vale lo mismo (1.2B = 1.200 millones)
                     if cifras_fuente is not None and num not in cifras_fuente and _valor(n_txt, suf) not in valores_fuente:
-                        fallos.append(f"Slide {k}: la cifra '{m_cifra.group(0).strip()}' de '{c}' no aparece en el carrusel original")
+                        fallos.append(f"Slide {k}: la cifra '{m_cifra.group(0).strip()}' de '{c}' no aparece en el carrusel original (si es tuya, escríbela en 'Cifras confirmadas')")
     m = leer_marca()
     for f in m.get("fotos", "").split(",") + m.get("tipografia", "").split(","):
         f = f.strip()

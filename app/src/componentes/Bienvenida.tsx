@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Volume2, VolumeX, X } from "lucide-react";
 import { Sfx, iniciarSonidos } from "@/lib/sonidos";
 import { recargarSinIntro } from "@/lib/navegacion";
+import { useConexion, type Herramienta } from "@/lib/useConexion";
 
 /* Primer arranque: deja la marca y las conexiones configuradas en 4 bloques.
    Guarda en los mismos sitios que Branding y Ajustes (/api/marca, /api/marca/foto, /api/ajustes). */
 
 type Opcion = { v: string; t: string; e?: string };
-type Ajustes = { codex_ok: boolean; claude_ok: boolean; clave_puesta: boolean; creditos: number | null; creditos_error?: string; herramientas: Record<string, boolean> };
+type Ajustes = { codex_ok: boolean; claude_ok: boolean; claude_instalado: boolean; clave_puesta: boolean; creditos: number | null; creditos_error?: string; herramientas: Record<string, boolean> };
 
 // modo "inicial": primera vez del equipo (marca + conexiones). Modo "cliente": un cliente nuevo, sin las conexiones (son del equipo).
 const BLOQUES_INICIAL = ["Tú", "Tu marca", "Tu personaje", "Conexiones"];
@@ -333,10 +334,12 @@ export function Bienvenida() {
       </>);
       case "conexiones": return (<>
         <h2 className="cm-q__title" tabIndex={-1} ref={titulo}>Codex y Claude Code</h2>
-        <p className="cm-q__help">Codex genera las imágenes con tu plan de ChatGPT; Claude Code escribe las fichas y las descripciones con tu plan de Claude.</p>
+        <p className="cm-q__help">Codex genera las imágenes con tu plan de ChatGPT; Claude Code escribe las fichas y las descripciones con tu suscripción de Claude. Pulsa el botón y entra con tu cuenta en el navegador.</p>
         {!aj ? <div className="cm-wait"><div className="cm-wait__spin" /><p className="cm-wait__text">Comprobando…</p></div> : (<>
-          <Fila ok={aj.codex_ok} nombre="Codex" si="Conectado a tu cuenta de ChatGPT" no="Abre la Terminal y escribe:" orden="codex login" />
-          <Fila ok={aj.claude_ok} nombre="Claude Code" si="Instalado" no="Abre la Terminal y escribe:" orden="claude" />
+          <FilaConexion ok={aj.codex_ok} nombre="Codex" si="Conectado a tu cuenta de ChatGPT" no="Sin sesión de ChatGPT" herramienta="codex" alConectar={comprobar} />
+          {aj.claude_instalado
+            ? <FilaConexion ok={aj.claude_ok} nombre="Claude Code" si="Conectado a tu cuenta de Claude" no="Sin sesión de Claude" herramienta="claude" alConectar={comprobar} />
+            : <Fila ok={false} nombre="Claude Code" si="" no="No está instalado. En la carpeta de la app, ejecuta:" orden="./instalar.sh" />}
           {Object.entries(aj.herramientas).some(([, v]) => !v) && <Fila ok={false} nombre={`Faltan: ${Object.entries(aj.herramientas).filter(([, v]) => !v).map(([k]) => k).join(", ")}`} no="En la carpeta de la app, ejecuta:" orden="./instalar.sh" si="" />}
           <button type="button" className="cm-back" style={{ justifySelf: "center" }} disabled={comprobando} onClick={() => { Sfx.click(); void comprobar(); }}>{comprobando ? "Comprobando…" : "↻ Volver a comprobar"}</button>
           {(!aj.codex_ok || !aj.claude_ok) && <p className="cm-q__help" style={{ textAlign: "center", marginTop: 0 }}>Puedes seguir y conectarlo después: sin Codex no se puede generar.</p>}
@@ -420,6 +423,20 @@ export function Bienvenida() {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/** Como Fila, pero si falta la sesión ofrece conectar desde aquí: abre el navegador y, al terminar, vuelve a comprobar. */
+function FilaConexion({ ok, nombre, si, no, herramienta, alConectar }: { ok: boolean; nombre: string; si: string; no: string; herramienta: Herramienta; alConectar: () => void }) {
+  const { fase, error, iniciar } = useConexion(herramienta, alConectar);
+  return (
+    <div className="cm-check">
+      <span className={`cm-check__i ${ok ? "ok" : "no"}`}>{ok ? "✓" : "!"}</span>
+      <span className="cm-check__t"><b>{nombre}</b>{ok ? si : no}{error && <> · {error}</>}</span>
+      {!ok && (fase === "esperando"
+        ? <button type="button" className="cm-back" onClick={() => { Sfx.click(); void iniciar(); }}>Esperando… ¿cerraste la ventana? Abrir de nuevo</button>
+        : <button type="button" className="cm-back" onClick={() => { Sfx.click(); void iniciar(); }}>Conectar {nombre === "Codex" ? "Codex" : "Claude"}</button>)}
     </div>
   );
 }

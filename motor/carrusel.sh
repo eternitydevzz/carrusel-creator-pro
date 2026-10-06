@@ -13,6 +13,7 @@
 #   carrusel.sh descripcion <nombre>                Claude Code escribe la descripción de Instagram en salida/<nombre>/descripcion.txt
 #   carrusel.sh encoger <nombre> <n> [factor] [y]  encoge la escena (0.92; y = px que baja) para no pisar pie ni contador; 0 imágenes
 #   carrusel.sh variaciones <nombre>                5 variaciones de esa descripción (otro gancho y enfoque) en salida/<nombre>/variaciones.txt
+#   carrusel.sh reestampar <nombre> [n]            vuelve a pegar contador y pie sobre los slides que ya hay (todos o el n); 0 imágenes
 #   carrusel.sh cupo                                imágenes gastadas en 24 h por la cuenta actual
 #
 # Variables opcionales:  ENSAYO=1 (no llama a Codex)   FORZAR=1 (salta el cupo)   RECOGER_SID=<id> (recoge una sesión ya hecha)
@@ -50,20 +51,28 @@ ajustar_4x5() {  # <origen> <destino>: deja la imagen en 4:5 recortando, nunca e
   if [ $((w*5)) -lt $((h*4)) ]; then nw=$w; nh=$((w*5/4)); else nh=$h; nw=$((h*4/5)); fi
   sips -c $nh $nw "$src" --out "$dst" >/dev/null && sips -z 1350 1080 "$dst" >/dev/null
 }
+dibujar() {  # <args de plantilla.swift...>: dibuja una capa; si la carpeta capas desapareció a mitad, la recrea y reintenta una vez
+  local f="${@[3]}"
+  mkdir -p "${f:h}"; swift "$AQUI/plantilla/plantilla.swift" "$@" >/dev/null 2>&1 && return 0
+  mkdir -p "${f:h}"
+  local e; e="$(swift "$AQUI/plantilla/plantilla.swift" "$@" 2>&1 >/dev/null)" && return 0
+  print -r -- "$e" | grep -m1 -i -E "fatal error|error:" >&2  # solo la línea del error, no el volcado del compilador
+  return 1
+}
 capa() {  # <n> <N> → ruta de la capa transparente con contador y pie
   # el adelanto del pie (casilla 'siguiente' del slide) cambia por carrusel: va en el nombre de la capa (huella corta)
   export PIE_SIGUIENTE=""; [ -n "${PIE_FICHA:-}" ] && PIE_SIGUIENTE="$(python3 "$AQUI/ficha.py" campo "$PIE_FICHA" "$1" siguiente)"
   local huella=$(printf '%s|%s' "$PIE_LEMA" "$PIE_SIGUIENTE" | md5 | cut -c1-8)
-  local f="$DATOS/capas/capa_${1}de${2}_${PIE_HANDLE//[@.]/}${PIE_ESTILO:+_$PIE_ESTILO}_$huella.png"
+  local f="$DATOS/capas/capa_${1}de${2}_${PIE_HANDLE//[@.]/}${PIE_ESTILO:+_$PIE_ESTILO}${PIE_VARIANTE:+_$PIE_VARIANTE}_$huella.png"
   mkdir -p "$DATOS/capas"
-  [ -f "$f" ] || swift "$AQUI/plantilla/plantilla.swift" "$1" "$2" "$f" >/dev/null || { echo "FALLO al dibujar la capa $1"; exit 1; }
+  [ -f "$f" ] || dibujar "$1" "$2" "$f" || { echo "FALLO al dibujar la capa $1"; exit 1; }
   echo "$f"
 }
 guia_zonas() {  # <N> → imagen con fondo que enseña dónde van el contador y el pie (referencia para Codex)
   export PIE_SIGUIENTE="SIGUIENTE: / ADELANTO DEL SLIDE"  # en la guía solo enseña cuánto ocupa el pie
-  local f="$DATOS/capas/guia_zonas_${1}_${PIE_HANDLE//[@.]/}${PIE_ESTILO:+_$PIE_ESTILO}_pie2.png"
+  local f="$DATOS/capas/guia_zonas_${1}_${PIE_HANDLE//[@.]/}${PIE_ESTILO:+_$PIE_ESTILO}${PIE_VARIANTE:+_$PIE_VARIANTE}_pie2.png"
   mkdir -p "$DATOS/capas"
-  [ -f "$f" ] || swift "$AQUI/plantilla/plantilla.swift" 1 "$1" "$f" fondo >/dev/null || { echo "FALLO al dibujar la guía de zonas"; exit 1; }
+  [ -f "$f" ] || dibujar 1 "$1" "$f" fondo || { echo "FALLO al dibujar la guía de zonas"; exit 1; }
   echo "$f"
 }
 estampar() {  # <carpeta> <n> <N>: estampa contador y pie sobre _sin_pie/n.png → n.png
@@ -82,6 +91,14 @@ hay_cupo() {  # <imagenes que se van a pedir>
   fi
 }
 imagenes_de_sesion() { find "$GEN/$1" -type f -name '*.png' -print0 2>/dev/null | xargs -0 ls -tr 2>/dev/null; }
+# Claude Code escribe sus errores en la salida normal (el .log), no en el .err: se leen los dos.
+# Si la causa es la sesión caducada, empieza por SESION_CLAUDE_CADUCADA para que la app ofrezca el botón de iniciar sesión.
+fallo_claude() {  # <exit> <log>
+  local det="$(head -c 300 "$2" 2>/dev/null; head -c 300 "$2.err" 2>/dev/null)"
+  if print -r -- "$det" | grep -q -i -E "OAuth session expired|Failed to authenticate" || "$CLAUDE" auth status 2>/dev/null | grep -q '"loggedIn": false'; then
+    echo "SESION_CLAUDE_CADUCADA: tu sesión de Claude caducó. Inicia sesión y vuelve a probar."
+  else echo "Claude falló (exit $1): $det"; fi
+}
 siguiente_log() { local k=1; while [ -e "$1/_logs/${2}_$k.log" ]; do k=$((k+1)); done; echo "$1/_logs/${2}_$k.log"; }
 refs_marca() {  # rutas completas de las fotos de la marca, en orden
   # fotos del personaje y después las referencias de estilo (1 a 3): el mismo orden que describe ficha.py en el prompt
@@ -129,7 +146,7 @@ cmd_ficha_ia() {  # <nombre>: Claude Code (con la sesión del usuario) redacta l
   # pruebas sin gasto: CLAUDE_SIMULADO=<respuesta guardada> hace de Claude
   if [ -n "${CLAUDE_SIMULADO:-}" ]; then cp "$CLAUDE_SIMULADO" "$LOG"; : > "$LOG.err"; local RC=0
   else "$CLAUDE" -p --allowedTools "Read" --output-format text < "$V/_prompt_ficha_enviado.txt" > "$LOG" 2>"$LOG.err"; local RC=$?; fi
-  [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
+  [ $RC -eq 0 ] || { fallo_claude $RC "$LOG"; exit 1; }
   python3 - "$LOG" "$F" "$V/texto_original.md" "$V" <<'PY'
 import sys,re
 t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
@@ -179,7 +196,7 @@ cmd_generar() {  # <nombre>
   python3 "$AQUI/ficha.py" prompt "$F" "$OUT/_prompt.txt" "$H" || exit 1
   { cat "$OUT/_prompt.txt"; echo; echo "INSTRUCCIÓN TÉCNICA: crea el carrusel completo, los $N slides en orden, en esta misma respuesta. No ejecutes comandos ni añadas texto con código. Si rehaces alguna imagen, al terminar responde solo con FINAL: y los números de la imagen buena de cada slide, en orden de slide, contando las imágenes en el orden en que las creaste empezando en 1 (por ejemplo, con 3 slides y los dos primeros rehechos, la palabra FINAL, dos puntos y luego 2,4,5). Si no rehiciste ninguna, responde solo 'ok'."; } > "$OUT/_prompt_enviado.txt"
   local REFS=("${(@f)$(refs_marca)}"); [ "$H" -gt 0 ] && for h in $(seq 1 $H); do REFS+=("$OUT/_viral/viral_hoja_$h.jpg"); done
-  REFS+=("$(guia_zonas $N)")
+  local GUIA; GUIA="$(guia_zonas $N)" || { echo "$GUIA"; exit 1; }; REFS+=("$GUIA")
   local SID TOK LIM=0 RC=0 LOG
   if [ -n "${RECOGER_SID:-}" ]; then SID="$RECOGER_SID"; TOK="-"
   else
@@ -229,9 +246,26 @@ cmd_corregir() {  # <nombre> <n> "<cambio>"
   [ ${#FOTOS} -gt 0 ] || { echo "FALTA_MARCA: este cliente no tiene fotos del personaje. Súbelas en Branding."; exit 1; }
   local QUIEN="La imagen 2 es una foto del personaje: su cara tiene que quedar exactamente como en esa foto"
   [ ${#FOTOS} -ge 2 ] && QUIEN="Las imágenes 2 y 3 son fotos del personaje: su cara tiene que quedar exactamente como en esas fotos"
-  printf 'Edita la imagen 1 (slide de un carrusel de Instagram, 4:5). %s, nítida y con sus rasgos, aunque el resto del slide no cambie.\nMantén todo lo demás exactamente igual: pose, ropa, fondo, titular y textos.\nÚnico cambio: %s\nNo añadas ningún texto ni elemento nuevo. No pongas contador ni pie.\n\nINSTRUCCIÓN TÉCNICA: no leas skills ni archivos y no ejecutes ningún comando. Llama UNA sola vez a la herramienta de generación de imágenes con todo lo anterior y termina respondiendo solo '"'"'ok'"'"'.\n' "$QUIEN" "$cambio" > "$P"
+  local IMAGENES=("$OUT/_sin_pie/$n.png" "${FOTOS[@]}")
+  if [ "${REDISENO:-0}" = "1" ]; then
+    # Rediseño: no es un retoque. Codex recibe el slide ORIGINAL como referencia (imagen 1) y rehace el slide con su diseño, con los textos de la ficha.
+    # No se le pasa el slide actual (si el viejo tiene otro estilo, lo arrastraría). Las fotos del personaje solo si el slide lleva personaje.
+    local REFERENCIA="$VIRALES/$nombre/slide_$(printf %02d $n).jpg" FI="$(ficha_de "$nombre")" TEXTOS="" c v PERSONA=""
+    [ -f "$REFERENCIA" ] || { echo "No existe el slide original $REFERENCIA"; exit 1; }
+    for c in titular arriba debajo texto_escena cta_grande; do
+      v="$(python3 "$AQUI/ficha.py" campo "$FI" "$n" $c)"; [ -n "$v" ] && [ "$v" != "ninguno" ] && TEXTOS+="- $c: \"$v\""$'\n'
+    done
+    case "$(python3 "$AQUI/ficha.py" campo "$FI" "$n" personaje)" in
+      si|sí|Si|Sí) IMAGENES=("$REFERENCIA" "${FOTOS[@]}")
+        PERSONA="El personaje es el de la imagen 2$([ ${#FOTOS} -ge 2 ] && echo " y 3") (fotos): su cara tiene que quedar exactamente como en esas fotos, nítida y con sus rasgos." ;;
+      *) IMAGENES=("$REFERENCIA"); PERSONA="En este slide no aparece ninguna persona." ;;
+    esac
+    printf 'Crea un slide de un carrusel de Instagram vertical 4:5 (1080 x 1350) con el mismo diseño que la imagen 1, que es el slide original de referencia.\nCopia de la referencia: el fondo y su color, la composición, el tamaño y el estilo de la letra, los iconos, logos, móviles e ilustraciones, los colores de los resaltados y la cantidad de elementos. Tiene que parecerse a la referencia en un 95 %%.\nTextos: escribe exactamente estas palabras, con sus tildes, y ninguna más (las mayúsculas y minúsculas las marca la referencia, salvo que abajo se diga otra cosa; si una casilla trae varias líneas entre comillas separadas por " / ", cada una es una línea del slide; el texto de la escena va dentro de la escena donde la referencia tiene texto):\n%s\nCambios sobre la referencia: %s\n%s\nNo copies de la referencia su @, su foto de perfil, su contador ni las flechas de abajo. Deja el 10 %% inferior de la imagen liso, del color del fondo (ahí pondremos nosotros el pie). No pongas contador ni pie.\n\nINSTRUCCIÓN TÉCNICA: no leas skills ni archivos y no ejecutes ningún comando. Llama UNA sola vez a la herramienta de generación de imágenes con todo lo anterior y termina respondiendo solo '"'"'ok'"'"'.\n' "$TEXTOS" "$cambio" "$PERSONA" > "$P"
+  else
+    printf 'Edita la imagen 1 (slide de un carrusel de Instagram, 4:5). %s, nítida y con sus rasgos, aunque el resto del slide no cambie.\nMantén todo lo demás exactamente igual: pose, ropa, fondo, titular y textos.\nÚnico cambio: %s\nNo añadas ningún texto ni elemento nuevo. No pongas contador ni pie.\n\nINSTRUCCIÓN TÉCNICA: no leas skills ni archivos y no ejecutes ningún comando. Llama UNA sola vez a la herramienta de generación de imágenes con todo lo anterior y termina respondiendo solo '"'"'ok'"'"'.\n' "$QUIEN" "$cambio" > "$P"
+  fi
   local LOG=$(siguiente_log "$OUT" "slide_$n")
-  llamar_codex "$OUT" "$P" "$LOG" "$OUT/_sin_pie/$n.png" "${FOTOS[@]}"; local RC=$?
+  llamar_codex "$OUT" "$P" "$LOG" "${IMAGENES[@]}"; local RC=$?
   [ $RC -eq 5 ] && exit 5
   [ "${ENSAYO:-0}" = "1" ] && exit 0
   local TOK=$(grep -A1 'tokens used' "$LOG" | tail -1) SID=$(grep -m1 "session id:" "$LOG" | awk '{print $3}')
@@ -308,7 +342,7 @@ cmd_descripcion() {  # <nombre>: Claude Code (con la sesión del usuario) escrib
   local LOG=$(siguiente_log "$OUT" descripcion)
   # sin herramientas: todo lo que necesita va en el prompt
   "$CLAUDE" -p --tools "" --output-format text < "$P" > "$LOG" 2>"$LOG.err"; local RC=$?
-  [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
+  [ $RC -eq 0 ] || { fallo_claude $RC "$LOG"; exit 1; }
   python3 - "$LOG" "$OUT/_descripcion_nueva.txt" <<'PY'
 import sys,re
 t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
@@ -336,7 +370,7 @@ cmd_variaciones() {  # <nombre>: 5 variaciones de la descripción, para probar c
   if [ "${ENSAYO:-0}" = "1" ]; then echo "ENSAYO: no se llama a Claude. Prompt: $P"; exit 0; fi
   local LOG=$(siguiente_log "$OUT" variaciones)
   "$CLAUDE" -p --tools "" --output-format text < "$P" > "$LOG" 2>"$LOG.err"; local RC=$?
-  [ $RC -eq 0 ] || { echo "Claude falló (exit $RC): $(head -c 300 "$LOG.err")"; exit 1; }
+  [ $RC -eq 0 ] || { fallo_claude $RC "$LOG"; exit 1; }
   python3 - "$LOG" "$OUT/_variaciones_nuevas.txt" <<'PY'
 import sys,re
 t=open(sys.argv[1],encoding="utf-8",errors="ignore").read()
@@ -371,10 +405,26 @@ cmd_encoger() {  # <nombre> <n> [factor] [y]: cuando Codex lleva la escena hasta
   echo "OK slide $n encogido al $f, bajado ${y} px · fondo #$col · versión anterior en _versiones/${n}_v$k.png"
 }
 
+cmd_reestampar() {  # <nombre> [n]: vuelve a estampar contador y pie sobre _sin_pie/ (no gasta imágenes). Sirve al cambiar el pie en la ficha.
+  local nombre="$1" OUT="$SALIDA/$1"; local N=$(cab "$nombre" slides) k; local lista=(${=2:-$(seq 1 $N)})
+  for k in $lista; do
+    [ -f "$OUT/_sin_pie/$k.png" ] || { echo "No existe $OUT/_sin_pie/$k.png"; exit 1; }
+    estampar "$OUT" $k $N || { echo "FALLO: no se pudo estampar el pie del slide $k"; exit 1; }
+  done
+  cmd_revisar "$nombre" >/dev/null
+  echo "OK pie estampado en los slides: $lista"
+}
+
 cmd_cupo() { echo "Cuenta '$CUENTA': $(gastadas_24h) imágenes en las últimas 24 h (tope $TOPE)"; }
 
 # estilo: claro en la ficha → pie en azul marino (plantilla) y PROMPT_BASE_CLARO.txt (ficha.py)
-[ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && [ "$(cab "$2" estilo)" = "claro" ] && export PIE_ESTILO=claro
+# pie_claro: si → solo el pie en azul marino (fondo claro sin usar el prompt de estilo claro; p. ej. slides rediseñados con REDISENO=1)
+[ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && { [ "$(cab "$2" estilo)" = "claro" ] || [[ "$(cab "$2" pie_claro)" == (si|referencia) ]]; } && export PIE_ESTILO=claro
+# pie_claro: referencia → pie centrado como los carruseles claros virales (línea · foto · @ · línea con flecha); la foto es la primera de la marca
+if [ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && [ "$(cab "$2" pie_claro)" = "referencia" ]; then
+  export PIE_VARIANTE=referencia
+  _av="${${(s:,:)"$(dato fotos)"}[1]## }"; [ -n "$_av" ] && [ -f "$MARCA/$_av" ] && export PIE_AVATAR="$MARCA/$_av"
+fi
 [ $# -ge 2 ] && [ -f "$(ficha_de "$2")" ] && export PIE_FICHA="$(ficha_de "$2")"
 
 case "${1:-}" in
@@ -390,6 +440,7 @@ case "${1:-}" in
   descripcion) [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_descripcion "$2" ;;
   encoger)   [ $# -ge 3 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_encoger "$2" "$3" "${4:-0.92}" "${5:-0}" ;;
   variaciones) [ $# -eq 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_variaciones "$2" ;;
+  reestampar) [ $# -ge 2 ] || { sed -n '2,16p' "$0"; exit 64; }; cmd_reestampar "$2" "${3:-}" ;;
   cupo)      cmd_cupo ;;
   *)         sed -n '2,16p' "$0"; exit 64 ;;
 esac

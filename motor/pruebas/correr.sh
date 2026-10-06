@@ -97,6 +97,54 @@ p_corregir() { tres_slides && codex correccion && motor corregir con_persona_3 2
 p_corregir_sin_imagen() { tres_slides && codex correccion_sin_imagen; motor corregir con_persona_3 2 "sube el texto"; [ $RC -ne 0 ] && [[ "$SALIDA" == *"FALLO slide 2"* ]]; }
 p_corregir_imagen_rota() { tres_slides && codex correccion_imagen_rota; motor corregir con_persona_3 2 "sube el texto"; local o="$P/salida/con_persona_3"
   [ $RC -ne 0 ] && [[ "$SALIDA" == *"se queda como estaba"* ]] && igual "$o/_sin_pie/2.png" "$o/_versiones/2_v1.png" && [ -f "$o/2.png" ]; }
+# ---------- rediseño (REDISENO=1): Codex recibe el slide ORIGINAL como referencia ----------
+ensayo_corregir() {  # [REDISENO] <slide>: corrige en ensayo (no llama a Codex) y deja el prompt en _correcciones/
+  unset CODEX_SIMULADO; export ENSAYO=1; [ "$1" = "rediseno" ] && export REDISENO=1; motor corregir con_persona_3 "${2:-2}" "fondo blanco"; unset ENSAYO REDISENO
+}
+p_rediseno_adjunta_original() {
+  tres_slides && ensayo_corregir rediseno 2; local pr="$P/salida/con_persona_3/_correcciones/slide_2_v1.txt"
+  [ $RC -eq 0 ] && [[ "$SALIDA" == *"virales/con_persona_3/slide_02.jpg"* ]] && [[ "$SALIDA" != *"_sin_pie"* ]] && grep -q "mismo diseño que la imagen 1" "$pr" && grep -q "^- titular:" "$pr"
+}
+p_rediseno_sin_original() { tres_slides && rm "$P/virales/con_persona_3/slide_02.jpg" && ensayo_corregir rediseno 2; [ $RC -ne 0 ] && [[ "$SALIDA" == *"No existe el slide original"* ]]; }
+p_corregir_normal_intacto() {  # sin REDISENO, corregir sigue mandando el slide actual y la instrucción de siempre
+  tres_slides && ensayo_corregir normal 2; local pr="$P/salida/con_persona_3/_correcciones/slide_2_v1.txt"
+  [ $RC -eq 0 ] && [[ "$SALIDA" == *"_sin_pie/2.png"* ]] && grep -q "Edita la imagen 1" "$pr" && ! grep -q "mismo diseño" "$pr"
+}
+p_rediseno_con_persona() {  # el slide 3 lleva personaje: se añaden las fotos tras la referencia
+  tres_slides && ensayo_corregir rediseno 3; local pr="$P/salida/con_persona_3/_correcciones/slide_3_v1.txt"
+  [ $RC -eq 0 ] && [[ "$SALIDA" == *"slide_03.jpg"* ]] && [[ "$SALIDA" == *"fotos/"* ]] && grep -q "El personaje es el de la imagen 2" "$pr"
+}
+p_rediseno_sin_persona() { tres_slides && ensayo_corregir rediseno 2; [[ "$SALIDA" != *"fotos/"* ]] && grep -q "no aparece ninguna persona" "$P/salida/con_persona_3/_correcciones/slide_2_v1.txt"; }
+p_pie_claro() {  # pie_claro: si → el pie se dibuja en azul marino, sin cambiar el prompt de la ficha
+  tres_slides || return 1
+  sed -i '' '1a\
+pie_claro: si
+' "$P/fichas/con_persona_3.md"; grep -q "^pie_claro: si" "$P/fichas/con_persona_3.md" || return 1
+  rm -rf "$D/capas"; export ENSAYO=1; motor generar con_persona_3; unset ENSAYO
+  ls "$D/capas" | grep -q "_claro"
+}
+prueba rediseno_adjunta_original "manda el slide original como imagen 1, no el slide actual, y los textos de la ficha" p_rediseno_adjunta_original
+prueba rediseno_sin_original "para y dice que falta el slide original" p_rediseno_sin_original
+prueba rediseno_con_persona "si el slide lleva personaje, añade sus fotos tras la referencia" p_rediseno_con_persona
+prueba rediseno_sin_persona "si no lleva personaje, no manda fotos" p_rediseno_sin_persona
+prueba corregir_normal_intacto "sin REDISENO, corregir no cambia" p_corregir_normal_intacto
+prueba pie_claro "pie_claro: si dibuja el pie en azul marino" p_pie_claro
+p_reestampar() {  # vuelve a estampar el pie sin Codex y sin gastar cupo
+  tres_slides || return 1; local o="$P/salida/con_persona_3" antes; antes=$(wc -l < "$D/CUPO.csv" 2>/dev/null || echo 0); rm "$o/2.png"
+  motor reestampar con_persona_3 2; [ $RC -eq 0 ] && [ -f "$o/2.png" ] && [ "$(wc -l < "$D/CUPO.csv" 2>/dev/null || echo 0)" = "$antes" ]
+}
+p_pie_referencia() {  # pie_claro: referencia → capas con la variante en el nombre (no se mezclan con las del pie normal)
+  tres_slides || return 1
+  sed -i '' '1a\
+pie_claro: referencia
+' "$P/fichas/con_persona_3.md"; rm -rf "$D/capas"; motor reestampar con_persona_3 1; [ $RC -eq 0 ] && ls "$D/capas" | grep -q "_claro_referencia_"
+}
+p_pie_normal_intacto() {  # sin pie_claro, las capas se llaman como siempre
+  tres_slides || return 1; rm -rf "$D/capas"; motor reestampar con_persona_3 1; [ $RC -eq 0 ] && ls "$D/capas" | grep -q "^capa_1de3_" && ! ls "$D/capas" | grep -q "referencia\|claro"
+}
+prueba reestampar "estampa el pie sin gastar cupo" p_reestampar
+prueba pie_referencia "pie_claro: referencia usa la variante" p_pie_referencia
+prueba pie_normal_intacto "sin pie_claro, capas como siempre" p_pie_normal_intacto
 prueba generar_normal "8 slides con su pie (log real del #12)" p_gen_normal
 prueba generar_imagen_rota "para diciendo qué imagen falló (antes, sin mensaje)" p_gen_imagen_rota
 prueba corregir_normal "corrige el slide 2 y guarda la versión anterior" p_corregir

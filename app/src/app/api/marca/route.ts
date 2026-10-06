@@ -19,11 +19,18 @@ export async function GET() {
 export async function POST(req: Request) {
   const cuerpo = (await cuerpoJson(req)) as Record<string, string>;
   const marca = await leerMarca();
+  const handleAntes = marca.handle ?? "";
   for (const k of CAMPOS) if (typeof cuerpo[k] === "string") marca[k] = cuerpo[k].replace(/\n/g, " ").trim();
   if (marca.azul && !/^#[0-9a-fA-F]{6}$/.test(marca.azul)) return NextResponse.json({ error: "El color tiene que ser un código como #1A79FB" }, { status: 400 });
   if (marca.handle && !marca.handle.startsWith("@")) marca.handle = "@" + marca.handle;
   await escribirMarca(marca);
-  // las capas del pie llevan el handle: si cambia, se vuelven a dibujar solas al generar
-  await fs.rm(path.join(datos(), "capas"), { recursive: true, force: true });
+  // las capas del pie llevan el handle en su nombre (_handle_). Se borran solo las de este cliente (la de antes y la de ahora)
+  // para que se redibujen solas; la carpeta capas es de todos los clientes y puede haber otra generación usándola.
+  const sinSimbolos = (h: string) => h.replace(/[@.]/g, "");
+  const handles = [...new Set([handleAntes, marca.handle ?? ""].map(sinSimbolos).filter(Boolean))];
+  const carpetaCapas = path.join(datos(), "capas");
+  for (const nombre of await fs.readdir(carpetaCapas).catch(() => [] as string[])) {
+    if (handles.some((h) => nombre.includes(`_${h}_`))) await fs.rm(path.join(carpetaCapas, nombre), { force: true });
+  }
   return NextResponse.json({ ok: true, marca });
 }

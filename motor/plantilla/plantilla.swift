@@ -94,6 +94,41 @@ func textoIzq(_ s: String, _ fuente: String, _ tam: CGFloat, x: CGFloat, baseY: 
     }
 }
 
+// PIE_VARIANTE=referencia: pie centrado como el de los carruseles virales claros:
+//   línea · foto de perfil redonda (PIE_AVATAR, opcional) · @ en negrita · línea (con flecha si hay más slides). Sin lema ni botón.
+if env["PIE_VARIANTE"] == "referencia" {
+    let yc: CGFloat = 1285, tam: CGFloat = 25
+    let fHandle = CTFontCreateWithName("HelveticaNeue-Bold" as CFString, tam, nil)
+    let lHandle = CTLineCreateWithAttributedString(NSAttributedString(string: handle, attributes: [NSAttributedString.Key(kCTFontAttributeName as String): fHandle]))
+    let wH = CGFloat(CTLineGetTypographicBounds(lHandle, nil, nil, nil))
+    var foto: CGImage? = nil
+    if let ruta = env["PIE_AVATAR"], let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: ruta) as CFURL, nil) { foto = CGImageSourceCreateImageAtIndex(src, 0, nil) }
+    let d: CGFloat = 46, hueco: CGFloat = 12, tramo: CGFloat = 84, sep: CGFloat = 20
+    var x = (CGFloat(W) - (tramo + sep + (foto != nil ? d + hueco : 0) + wH + sep + tramo)) / 2
+    ctx.setStrokeColor(blanco); ctx.setLineWidth(2.4); ctx.setLineCap(.round); ctx.setLineJoin(.round)
+    ctx.move(to: CGPoint(x: x, y: yc)); ctx.addLine(to: CGPoint(x: x + tramo, y: yc)); ctx.strokePath()
+    x += tramo + sep
+    if let foto = foto {
+        let lado = min(foto.width, foto.height)
+        let recorte = foto.cropping(to: CGRect(x: (foto.width - lado) / 2, y: Int(Double(foto.height - lado) * 0.15), width: lado, height: lado))
+        if let recorte = recorte {
+            ctx.saveGState()
+            ctx.addEllipse(in: CGRect(x: x, y: yc - d / 2, width: d, height: d)); ctx.clip()
+            ctx.translateBy(x: x, y: yc + d / 2); ctx.scaleBy(x: 1, y: -1)  // el lienzo está invertido: la foto se dibuja al revés si no
+            ctx.draw(recorte, in: CGRect(x: 0, y: 0, width: d, height: d))
+            ctx.restoreGState()
+        }
+        x += d + hueco
+    }
+    textoIzq(handle, "HelveticaNeue-Bold", tam, x: x, baseY: yc + 9, color: blanco)
+    x += wH + sep
+    ctx.setStrokeColor(blanco); ctx.setLineWidth(2.4)
+    ctx.move(to: CGPoint(x: x, y: yc)); ctx.addLine(to: CGPoint(x: x + tramo, y: yc))
+    if nAct < nTot {
+        ctx.move(to: CGPoint(x: x + tramo - 11, y: yc - 9)); ctx.addLine(to: CGPoint(x: x + tramo, y: yc)); ctx.addLine(to: CGPoint(x: x + tramo - 11, y: yc + 9))
+    }
+    ctx.strokePath()
+} else {
 let yLineas: CGFloat = 1258
 ctx.setStrokeColor(linea); ctx.setLineWidth(1.5)
 ctx.move(to: CGPoint(x: 64, y: yLineas)); ctx.addLine(to: CGPoint(x: 500, y: yLineas))
@@ -136,6 +171,8 @@ if !siguiente.isEmpty {
     for (i, l) in siguiente.prefix(2).enumerated() {
         textoIzq(l.uppercased(), "HelveticaNeue", 13.5, x: xSep + 18, baseY: 1295 + CGFloat(i) * 23, color: tenue, espacio: 1.4, ancho: 1016 - (xSep + 18))
     }
+}
+
 }
 
 let img = ctx.makeImage()!

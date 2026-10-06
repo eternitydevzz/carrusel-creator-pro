@@ -32,14 +32,14 @@ export async function GET() {
   const ajustes = await leerAjustes();
   const perfil = await leerPerfil();
   const clave = String(ajustes.scrapecreators_key ?? "");
-  const [codex, cupo, claude, sc] = await Promise.all([comando("codex", ["login", "status"]), motor(["cupo"], { timeoutMs: 15_000 }), comando("claude", ["--version"]), creditos(clave)]);
+  const [codex, cupo, claude, claudeSesion, sc] = await Promise.all([comando("codex", ["login", "status"]), motor(["cupo"], { timeoutMs: 15_000 }), comando("claude", ["--version"]), comando("claude", ["auth", "status"]), creditos(clave)]);
   const herramientas: Record<string, boolean> = {};
   for (const h of ["codex", "claude", "ffmpeg", "exiftool", "swift", "python3", "zip"]) { const w = await comando("which", [h]); herramientas[h] = w.startsWith("/"); }
   return NextResponse.json({
     clave_puesta: clave.length > 0, clave_final: clave.slice(-4), creditos: sc.creditos, creditos_error: sc.error,
     cuenta: (await leerTexto(path.join(datos(), "CUENTA_ACTUAL.txt"))).trim(),
     ubicacion: perfil.ubicacion ?? ajustes.ubicacion ?? { ciudad: "Newark", estado: "New Jersey", pais: "United States", codigo: "US", lat: 40.7357, lon: -74.1724 },
-    codex, codex_ok: /logged in/i.test(codex), claude, claude_ok: /^\d+\.\d+/.test(claude), cupo: cupo.salida, herramientas,
+    codex, codex_ok: /logged in/i.test(codex), claude, claude_instalado: /^\d+\.\d+/.test(claude), claude_ok: /^\d+\.\d+/.test(claude) && /"loggedIn":\s*true/.test(claudeSesion), cupo: cupo.salida, herramientas,
     datos: datos(), datos_por_defecto: DATOS_POR_DEFECTO, config: CONFIG,
   });
 }

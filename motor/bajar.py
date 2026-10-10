@@ -9,6 +9,16 @@ import json, os, re, shutil, sys, urllib.error, urllib.parse, urllib.request
 AQUI = os.path.dirname(os.path.abspath(__file__))
 
 
+def link_limpio(url):
+    """https://www.instagram.com/p/CODIGO/ a partir de cualquier forma del link: con usuario delante
+    (instagram.com/usuario/p/CODIGO/), con ?img_index=1, ?igsh=… o sin www. Si no reconoce el código, lo deja igual."""
+    m = re.search(r"instagram\.com/(?:[A-Za-z0-9._]+/)?(p|reels?|tv)/([A-Za-z0-9_-]+)", url)
+    if not m:
+        return url.strip()
+    tipo = "p" if m.group(1) == "p" else "reel"
+    return f"https://www.instagram.com/{tipo}/{m.group(2)}/"
+
+
 def respuesta(url):
     guardada = os.environ.get("SC_RESPUESTA")
     if guardada:
@@ -53,6 +63,7 @@ def no_es_carrusel(que):
 
 def main(url, dest):
     # un reel se reconoce por el link: se para sin llamar a ScrapeCreators (no gasta crédito)
+    url = link_limpio(url)
     if re.search(r"instagram\.com/(reels?|tv)/", url):
         no_es_carrusel("un reel")
     if os.path.exists(dest):

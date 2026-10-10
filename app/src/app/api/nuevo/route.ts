@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 type Peticion = { modo: "link" | "guion"; url?: string; nombre?: string; guion?: string; redactar?: boolean };
 
 function nombreDesdeUrl(url: string) {
-  const m = /instagram\.com\/(?:p|reel)\/([A-Za-z0-9_-]+)/.exec(url);
+  const m = /instagram\.com\/(?:[A-Za-z0-9._]+\/)?(?:p|reel)\/([A-Za-z0-9_-]+)/.exec(url);
   return m ? `ig_${m[1]}` : null;
 }
 
@@ -27,9 +27,10 @@ export async function POST(req: Request) {
   let nombre = (p.nombre ?? "").trim().toLowerCase().replace(/\s+/g, "_").replace(/[^a-z0-9_\-]/g, "");
   if (p.modo === "link") {
     const url = (p.url ?? "").trim();
-    if (!/instagram\.com\/(p|reels?|tv)\//.test(url)) return NextResponse.json({ error: "Pega el link de un carrusel de Instagram (https://www.instagram.com/p/…)" }, { status: 400 });
+    // también vale el link con el usuario delante (instagram.com/usuario/p/CODIGO/): el motor lo limpia antes de llamar a ScrapeCreators
+    if (!/instagram\.com\/(?:[A-Za-z0-9._]+\/)?(p|reels?|tv)\//.test(url)) return NextResponse.json({ error: "Pega el link de un carrusel de Instagram (https://www.instagram.com/p/…)" }, { status: 400 });
     // un reel se ve en el link: se avisa sin llamar a ScrapeCreators (no gasta crédito)
-    if (/instagram\.com\/(reels?|tv)\//.test(url)) return NextResponse.json({ error: "Ese link es de un reel, no de un carrusel. Pega el link de un post con varios slides.", noEsCarrusel: true }, { status: 400 });
+    if (/instagram\.com\/(?:[A-Za-z0-9._]+\/)?(reels?|tv)\//.test(url)) return NextResponse.json({ error: "Ese link es de un reel, no de un carrusel. Pega el link de un post con varios slides.", noEsCarrusel: true }, { status: 400 });
     nombre = nombre || nombreDesdeUrl(url) || "";
     if (!nombreSeguro(nombre)) return NextResponse.json({ error: "Nombre no válido" }, { status: 400 });
     if (await existe(path.join(cliente(), "virales", nombre))) return NextResponse.json({ error: `Ya existe un carrusel llamado ${nombre}` }, { status: 409 });

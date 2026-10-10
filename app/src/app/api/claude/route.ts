@@ -35,7 +35,8 @@ export async function POST(req: Request) {
   if (!ruta) return NextResponse.json({ error: `No encuentro ${h}: instálalo primero (ver README).` }, { status: 500 });
   try {
     // en Windows, los .cmd de npm se lanzan a través de la consola (argumentos fijos, sin datos del usuario)
-    const hijo = spawn(ruta, h === "claude" ? ["auth", "login", "--claudeai"] : ["login"], { env: entornoBase(), stdio: "ignore", detached: true, windowsHide: true, shell: WINDOWS && /\.(cmd|bat)$/i.test(ruta) });
+    const conConsola = WINDOWS && /\.(cmd|bat)$/i.test(ruta);
+    const hijo = spawn(conConsola ? `"${ruta}"` : ruta, h === "claude" ? ["auth", "login", "--claudeai"] : ["login"], { env: entornoBase(), stdio: "ignore", detached: true, windowsHide: true, shell: conConsola });
     hijo.on("error", () => { delete hijos[h]; });
     hijo.unref();
     hijos[h] = hijo;

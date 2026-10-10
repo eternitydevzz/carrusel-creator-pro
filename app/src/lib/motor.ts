@@ -80,7 +80,9 @@ const entorno = (extra: Record<string, string> = {}) => entornoBase({ DATOS: dat
 
 /** Ruta completa de un programa del PATH (en Windows prueba también .exe, .cmd…), o null si no está instalado. */
 export function ejecutable(nombre: string): string | null {
-  const exts = WINDOWS ? ["", ...(process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").toLowerCase().split(";")] : [""];
+  // En Windows, npm deja junto a codex.cmd un "codex" sin extensión (un script de shell que Windows no puede ejecutar):
+  // solo valen los nombres con extensión de PATHEXT (.exe, .cmd…), salvo que el nombre ya traiga extensión.
+  const exts = WINDOWS && !path.extname(nombre) ? (process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").toLowerCase().split(";").filter(Boolean) : [""];
   for (const dir of PATH.split(path.delimiter)) {
     for (const ext of exts) {
       const f = path.join(dir, nombre + ext);
@@ -94,7 +96,8 @@ export function ejecutar(nombre: string, args: string[], timeoutMs = 15_000): Pr
   const ruta = ejecutable(nombre);
   if (!ruta) return Promise.resolve("");
   const conConsola = WINDOWS && /\.(cmd|bat)$/i.test(ruta);
-  return new Promise((res) => execFile(ruta, args, { env: entornoBase(), timeout: timeoutMs, windowsHide: true, shell: conConsola }, (e, out, err) => res(`${out ?? ""}${err ?? ""}`.trim() || (e ? e.message : ""))));
+  // con la consola, Node junta la orden en una línea: la ruta va entre comillas por si la carpeta del usuario tiene espacios
+  return new Promise((res) => execFile(conConsola ? `"${ruta}"` : ruta, args, { env: entornoBase(), timeout: timeoutMs, windowsHide: true, shell: conConsola }, (e, out, err) => res(`${out ?? ""}${err ?? ""}`.trim() || (e ? e.message : ""))));
 }
 
 /** Ejecuta una orden del motor y espera a que termine. Para lo que dura segundos. */

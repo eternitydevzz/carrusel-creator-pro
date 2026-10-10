@@ -42,7 +42,7 @@ EOF
 chmod +x "$AQUI"/motor/*.sh "$AQUI"/motor/*.py "$AQUI/arrancar.sh" 2>/dev/null || true
 
 echo
-if codex login status 2>&1 | grep -qi "logged in"; then echo "  ✓ Codex conectado"; else echo "  ! Codex sin sesión: ejecuta  codex login  (se abre el navegador)"; fi
+if codex login status 2>&1 | grep -qi "logged in" && ! codex login status 2>&1 | grep -qi "not logged in"; then echo "  ✓ Codex conectado"; else echo "  ! Codex sin sesión: ejecuta  codex login  (se abre el navegador)"; fi
 echo
 echo "Listo. Arranca con:  ./arrancar.sh   (se abre sola en http://carrusel.localhost:3000)"
 echo "Primera vez: entra en Claude Code con  claude  , y en la app: Ajustes (clave de ScrapeCreators) y Branding (tus fotos y tu marca)."

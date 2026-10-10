@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
-import { ejecutable, ejecutar, entornoBase, WINDOWS } from "@/lib/motor";
+import { codexConectado, ejecutable, ejecutar, entornoBase, WINDOWS } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +14,7 @@ const salida = ejecutar;
 export async function GET(req: Request) {
   const h = new URL(req.url).searchParams.get("herramienta") ?? "claude";
   if (!esHerramienta(h)) return NextResponse.json({ error: "Herramienta no válida" }, { status: 400 });
-  if (h === "codex") return NextResponse.json({ conectado: /logged in/i.test(await salida("codex", ["login", "status"])) });
+  if (h === "codex") return NextResponse.json({ conectado: codexConectado(await salida("codex", ["login", "status"])) });
   let conectado = false;
   try { conectado = JSON.parse(await salida("claude", ["auth", "status"])).loggedIn === true; } catch { /* sin respuesta legible: no conectado */ }
   return NextResponse.json({ conectado });

@@ -106,7 +106,7 @@ try {
 
 Write-Host ""
 $sesion = (& codex login status 2>&1) -join " "
-if ($sesion -match "logged in") { Write-Host "  OK Codex conectado" } else { Write-Host "  ! Codex sin sesión: ejecuta  codex login  (se abre el navegador)" }
+if (($sesion -match "logged in") -and ($sesion -notmatch "not logged in")) { Write-Host "  OK Codex conectado" } else { Write-Host "  ! Codex sin sesión: ejecuta  codex login  (se abre el navegador)" }
 Write-Host ""
 Write-Host "Listo. Arranca con el acceso directo del escritorio o con arrancar.cmd (se abre en http://carrusel.localhost:3000)."
 Write-Host "Primera vez: entra en Claude Code con  claude  , y en la app: Ajustes (clave de ScrapeCreators) y Branding (tus fotos y tu marca)."

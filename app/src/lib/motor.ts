@@ -78,6 +78,9 @@ export function entornoBase(extra: Record<string, string> = {}): NodeJS.ProcessE
 // el motor recibe la carpeta común y el cliente: una orden larga sigue con su cliente aunque se cambie de cliente en la app
 const entorno = (extra: Record<string, string> = {}) => entornoBase({ DATOS: datos(), PERFIL: perfilActivo(), ...extra });
 
+/** ¿`codex login status` dice que hay sesión? Ojo: "Not logged in" también contiene "logged in". */
+export const codexConectado = (salida: string) => /logged in/i.test(salida) && !/not logged in/i.test(salida);
+
 /** Ruta completa de un programa del PATH (en Windows prueba también .exe, .cmd…), o null si no está instalado. */
 export function ejecutable(nombre: string): string | null {
   // En Windows, npm deja junto a codex.cmd un "codex" sin extensión (un script de shell que Windows no puede ejecutar):

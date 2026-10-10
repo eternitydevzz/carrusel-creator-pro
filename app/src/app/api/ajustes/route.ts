@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { cambiarDatos, cliente, CONFIG, cuerpoJson, datos, DATOS_POR_DEFECTO, ejecutable, ejecutar, escribirAjustes, leerAjustes, leerTexto, motor, PY, WINDOWS } from "@/lib/motor";
+import { cambiarDatos, cliente, codexConectado, CONFIG, cuerpoJson, datos, DATOS_POR_DEFECTO, ejecutable, ejecutar, escribirAjustes, leerAjustes, leerTexto, motor, PY, WINDOWS } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export async function GET() {
     clave_puesta: clave.length > 0, clave_final: clave.slice(-4), creditos: sc.creditos, creditos_error: sc.error,
     cuenta: (await leerTexto(path.join(datos(), "CUENTA_ACTUAL.txt"))).trim(),
     ubicacion: perfil.ubicacion ?? ajustes.ubicacion ?? { ciudad: "Newark", estado: "New Jersey", pais: "United States", codigo: "US", lat: 40.7357, lon: -74.1724 },
-    codex, codex_ok: /logged in/i.test(codex), claude, claude_instalado: /^\d+\.\d+/.test(claude), claude_ok: /^\d+\.\d+/.test(claude) && /"loggedIn":\s*true/.test(claudeSesion), cupo: cupo.salida, herramientas,
+    codex, codex_ok: codexConectado(codex), claude, claude_instalado: /^\d+\.\d+/.test(claude), claude_ok: /^\d+\.\d+/.test(claude) && /"loggedIn":\s*true/.test(claudeSesion), cupo: cupo.salida, herramientas,
     datos: datos(), datos_por_defecto: DATOS_POR_DEFECTO, config: CONFIG, windows: WINDOWS,
   });
 }

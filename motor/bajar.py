@@ -20,7 +20,15 @@ def respuesta(url):
     try:
         return json.load(urllib.request.urlopen(r, timeout=120))
     except urllib.error.HTTPError as e:
-        detalle = e.read(300).decode("utf-8", "replace").strip().replace("\n", " ")
+        detalle = e.read(2000).decode("utf-8", "replace").strip().replace("\n", " ")
+        try:
+            mensaje = str(json.loads(detalle).get("message") or "")
+        except ValueError:
+            mensaje = ""
+        if "age restricted" in mensaje.lower():
+            raise SystemExit("FALLO_SCRAPECREATORS: Ese post tiene restricción de edad en Instagram y ScrapeCreators solo baja posts públicos. Prueba con otro carrusel (no se gastó ningún crédito).")
+        if "private" in mensaje.lower():
+            raise SystemExit("FALLO_SCRAPECREATORS: Ese post es de una cuenta privada y ScrapeCreators solo baja posts públicos. Prueba con otro carrusel.")
         motivo = {401: "la clave no es válida", 403: "la clave no tiene permiso o la petición fue bloqueada", 402: "no quedan créditos", 429: "demasiadas peticiones seguidas: espera un minuto"}.get(e.code, "error del servicio")
         raise SystemExit(f"FALLO_SCRAPECREATORS: ScrapeCreators respondió {e.code} ({motivo}). {detalle[:200]}")
     except urllib.error.URLError as e:

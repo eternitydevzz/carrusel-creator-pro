@@ -4,7 +4,7 @@ Para las pruebas sin gasto (motor/pruebas/correr.sh):
   SC_RESPUESTA=<archivo.json>  lee la respuesta guardada en vez de llamar a ScrapeCreators (no gasta créditos)
   SC_SIN_IMAGENES=1            no baja las imágenes: deja en su sitio una imagen de prueba
 """
-import json, os, re, shutil, sys, urllib.parse, urllib.request
+import json, os, re, shutil, sys, urllib.error, urllib.parse, urllib.request
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
 
@@ -14,8 +14,17 @@ def respuesta(url):
     if guardada:
         return json.load(open(guardada, encoding="utf-8"))
     q = urllib.parse.urlencode({"url": url, "include_play_count": "false"})
-    r = urllib.request.Request("https://api.scrapecreators.com/v1/instagram/post?" + q, headers={"x-api-key": os.environ["SC_KEY"]})
-    return json.load(urllib.request.urlopen(r, timeout=120))
+    # con el User-Agent por defecto de Python ("Python-urllib/…") el cortafuegos de la API responde 403
+    r = urllib.request.Request("https://api.scrapecreators.com/v1/instagram/post?" + q,
+                               headers={"x-api-key": os.environ["SC_KEY"].strip(), "User-Agent": "Mozilla/5.0 (carrusel-creator-pro)", "Accept": "application/json"})
+    try:
+        return json.load(urllib.request.urlopen(r, timeout=120))
+    except urllib.error.HTTPError as e:
+        detalle = e.read(300).decode("utf-8", "replace").strip().replace("\n", " ")
+        motivo = {401: "la clave no es válida", 403: "la clave no tiene permiso o la petición fue bloqueada", 402: "no quedan créditos", 429: "demasiadas peticiones seguidas: espera un minuto"}.get(e.code, "error del servicio")
+        raise SystemExit(f"FALLO_SCRAPECREATORS: ScrapeCreators respondió {e.code} ({motivo}). {detalle[:200]}")
+    except urllib.error.URLError as e:
+        raise SystemExit(f"FALLO_SCRAPECREATORS: no se pudo conectar con ScrapeCreators ({e.reason}). Revisa tu conexión a internet.")
 
 
 def bajar(u, p):

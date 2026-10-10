@@ -1,12 +1,15 @@
-// Puente entre la interfaz y el motor (motor/carrusel.sh). Todo corre en el Mac del usuario.
+// Puente entre la interfaz y el motor (motor/carrusel.py). Todo corre en la compu del usuario (Mac o Windows).
 import { spawn, execFile, execFileSync } from "node:child_process";
-import { promises as fs, readFileSync, existsSync, readdirSync } from "node:fs";
+import { promises as fs, readFileSync, existsSync, readdirSync, statSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
 export const RAIZ = path.resolve(process.cwd(), "..");
 export const MOTOR = path.join(RAIZ, "motor");
-export const SCRIPT = path.join(MOTOR, "carrusel.sh");
+export const SCRIPT = path.join(MOTOR, "carrusel.py");
+export const WINDOWS = process.platform === "win32";
+/** Python que corre el motor: CCP_PYTHON si se define; si no, "python" en Windows y "python3" en Mac/Linux. */
+export const PY = process.env.CCP_PYTHON || (WINDOWS ? "python" : "python3");
 /** Ajustes de la app que no viven en la carpeta de datos (porque dicen dónde está esa carpeta). */
 export const CONFIG = path.join(os.homedir(), ".carrusel-creator-pro.json");
 export const DATOS_POR_DEFECTO = path.join(RAIZ, "datos");
@@ -30,7 +33,7 @@ function asegurarPerfiles(D: string) {
   if (migrado === D) return;
   const P = path.join(D, "perfiles");
   const hay = existsSync(P) && readdirSync(P, { withFileTypes: true }).some((e) => e.isDirectory());
-  if (!hay) execFileSync("python3", [path.join(MOTOR, "migrar_perfiles.py"), D], { env: { ...process.env, PATH }, stdio: "pipe" });
+  if (!hay) execFileSync(PY, [path.join(MOTOR, "migrar_perfiles.py"), D], { env: entornoBase(), stdio: "pipe", windowsHide: true });
   migrado = D;
 }
 export function perfilActivo(): string {
@@ -60,16 +63,44 @@ export async function cambiarDatos(ruta: string) {
   return abs;
 }
 
-// Homebrew y ~/.local/bin no están en el PATH de un proceso arrancado desde una app: se añaden siempre.
-const RUTAS = [path.join(os.homedir(), ".local/bin"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"];
-export const PATH = [...new Set([...RUTAS, ...(process.env.PATH ?? "").split(":")])].join(":");
+// Homebrew, ~/.local/bin (Mac) y la carpeta de npm (Windows) no siempre están en el PATH de un proceso arrancado desde una app: se añaden.
+const RUTAS = WINDOWS
+  ? [process.env.APPDATA && path.join(process.env.APPDATA, "npm"), process.env.LOCALAPPDATA && path.join(process.env.LOCALAPPDATA, "Microsoft", "WinGet", "Links"), path.join(os.homedir(), ".local", "bin")].filter((r): r is string => !!r)
+  : [path.join(os.homedir(), ".local/bin"), "/opt/homebrew/bin", "/usr/local/bin", "/usr/bin", "/bin", "/usr/sbin", "/sbin"];
+const PATH_ACTUAL = Object.entries(process.env).find(([k]) => k.toUpperCase() === "PATH")?.[1] ?? "";
+export const PATH = [...new Set([...RUTAS, ...PATH_ACTUAL.split(path.delimiter)].filter(Boolean))].join(path.delimiter);
+/** El entorno del proceso con el PATH de arriba. En Windows la variable se llama "Path": se quita para no mandar dos. */
+export function entornoBase(extra: Record<string, string> = {}): NodeJS.ProcessEnv {
+  const env: Record<string, string | undefined> = {};
+  for (const [k, v] of Object.entries(process.env)) if (k.toUpperCase() !== "PATH") env[k] = v;
+  return { ...env, PATH, PYTHONUTF8: "1", ...extra } as unknown as NodeJS.ProcessEnv;
+}
 // el motor recibe la carpeta común y el cliente: una orden larga sigue con su cliente aunque se cambie de cliente en la app
-const entorno = () => ({ ...process.env, DATOS: datos(), PERFIL: perfilActivo(), PATH });
+const entorno = (extra: Record<string, string> = {}) => entornoBase({ DATOS: datos(), PERFIL: perfilActivo(), ...extra });
+
+/** Ruta completa de un programa del PATH (en Windows prueba también .exe, .cmd…), o null si no está instalado. */
+export function ejecutable(nombre: string): string | null {
+  const exts = WINDOWS ? ["", ...(process.env.PATHEXT ?? ".EXE;.CMD;.BAT;.COM").toLowerCase().split(";")] : [""];
+  for (const dir of PATH.split(path.delimiter)) {
+    for (const ext of exts) {
+      const f = path.join(dir, nombre + ext);
+      try { if (statSync(f).isFile()) return f; } catch { /* no está aquí */ }
+    }
+  }
+  return null;
+}
+/** Ejecuta un programa del PATH (codex, claude…) y devuelve su salida. En Windows, los .cmd de npm necesitan la consola. */
+export function ejecutar(nombre: string, args: string[], timeoutMs = 15_000): Promise<string> {
+  const ruta = ejecutable(nombre);
+  if (!ruta) return Promise.resolve("");
+  const conConsola = WINDOWS && /\.(cmd|bat)$/i.test(ruta);
+  return new Promise((res) => execFile(ruta, args, { env: entornoBase(), timeout: timeoutMs, windowsHide: true, shell: conConsola }, (e, out, err) => res(`${out ?? ""}${err ?? ""}`.trim() || (e ? e.message : ""))));
+}
 
 /** Ejecuta una orden del motor y espera a que termine. Para lo que dura segundos. */
 export function motor(args: string[], opciones: { timeoutMs?: number } = {}): Promise<{ codigo: number; salida: string }> {
   return new Promise((resolve) => {
-    execFile("/bin/zsh", [SCRIPT, ...args], { env: entorno(), timeout: opciones.timeoutMs ?? 120_000, maxBuffer: 20 * 1024 * 1024 }, (err, stdout, stderr) => {
+    execFile(PY, [SCRIPT, ...args], { env: entorno(), timeout: opciones.timeoutMs ?? 120_000, maxBuffer: 20 * 1024 * 1024, windowsHide: true }, (err, stdout, stderr) => {
       const salida = `${stdout ?? ""}${stderr ?? ""}`.trim();
       const e = err as (NodeJS.ErrnoException & { code?: number | string }) | null;
       const codigo = !e ? 0 : typeof e.code === "number" ? e.code : 1;
@@ -87,8 +118,8 @@ export async function motorFondo(args: string[], archivoEstado: string) {
   await fs.mkdir(path.dirname(archivoEstado), { recursive: true });
   const log = `${archivoEstado}.log`, fin = `${archivoEstado}.fin`;
   await fs.rm(fin, { force: true }); await fs.writeFile(log, "");
-  const hijo = spawn("/bin/zsh", ["-c", 'zsh "$0" "$@" > "$LOG_ORDEN" 2>&1; echo $? > "$FIN_ORDEN"', SCRIPT, ...args],
-    { env: { ...entorno(), LOG_ORDEN: log, FIN_ORDEN: fin }, detached: true, stdio: "ignore" });
+  // motor/lanzar.py escribe la salida en el .log y el código en el .fin (igual en Mac y en Windows)
+  const hijo = spawn(PY, [path.join(MOTOR, "lanzar.py"), log, fin, SCRIPT, ...args], { env: entorno(), detached: true, stdio: "ignore", windowsHide: true });
   await fs.writeFile(archivoEstado, JSON.stringify({ estado: "en_curso", orden: args, inicio: new Date().toISOString(), salida: "", pid: hijo.pid }));
   hijo.unref();
 }
@@ -131,7 +162,7 @@ export async function leerEstado(archivoEstado: string) {
     return final;
   }
   if (!vivo(e.pid)) {
-    const final = { ...e, estado: "error", codigo: -1, salida: `${salida}\nLa orden se interrumpió antes de terminar (¿se cerró la app, la Terminal o el Mac?). Vuelve a lanzarla.`.trim(), fin: new Date().toISOString() };
+    const final = { ...e, estado: "error", codigo: -1, salida: `${salida}\nLa orden se interrumpió antes de terminar (¿se cerró la app, la terminal o la compu?). Vuelve a lanzarla.`.trim(), fin: new Date().toISOString() };
     await fs.writeFile(archivoEstado, JSON.stringify(final)).catch(() => {});
     return final;
   }

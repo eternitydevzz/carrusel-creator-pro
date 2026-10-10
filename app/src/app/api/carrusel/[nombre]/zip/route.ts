@@ -3,7 +3,7 @@ import { execFile } from "node:child_process";
 import { promises as fs } from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { cliente, nombreSeguro } from "@/lib/motor";
+import { cliente, entornoBase, MOTOR, nombreSeguro, PY } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
@@ -18,7 +18,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ nombre:
   const extra: string[] = [];
   for (const t of ["descripcion.txt", "variaciones.txt"]) if (await fs.access(path.join(salida, t)).then(() => true, () => false)) extra.push(path.join(salida, t));
   const zip = path.join(os.tmpdir(), `${nombre}-${Date.now()}.zip`);
-  await new Promise<void>((resolve, reject) => execFile("zip", ["-j", "-q", zip, ...jpgs.map((j) => path.join(salida, j)), ...extra], (e) => (e ? reject(e) : resolve())));
+  await new Promise<void>((resolve, reject) => execFile(PY, [path.join(MOTOR, "empaquetar.py"), zip, ...jpgs.map((j) => path.join(salida, j)), ...extra], { env: entornoBase(), windowsHide: true }, (e) => (e ? reject(e) : resolve())));
   const bytes = await fs.readFile(zip); await fs.rm(zip, { force: true });
   return new NextResponse(bytes, { headers: { "Content-Type": "application/zip", "Content-Disposition": `attachment; filename="${nombre}.zip"` } });
 }

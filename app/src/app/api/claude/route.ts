@@ -1,17 +1,14 @@
 import { NextResponse } from "next/server";
 import { execFile, spawn, type ChildProcess } from "node:child_process";
-import { PATH } from "@/lib/motor";
+import { ejecutable, ejecutar, entornoBase, WINDOWS } from "@/lib/motor";
 
 export const dynamic = "force-dynamic";
 
 type Herramienta = "claude" | "codex";
-const env = () => ({ ...process.env, PATH });
 const hijos: Partial<Record<Herramienta, ChildProcess>> = {};
 const esHerramienta = (h: unknown): h is Herramienta => h === "claude" || h === "codex";
 
-function salida(cmd: string, args: string[]): Promise<string> {
-  return new Promise((res) => execFile(cmd, args, { env: env(), timeout: 15_000 }, (_e, out, err) => res(`${out ?? ""}${err ?? ""}`)));
-}
+const salida = ejecutar;
 
 /** ¿Hay sesión iniciada? Claude: `claude auth status` (la que usa el motor para redactar). Codex: `codex login status`. */
 export async function GET(req: Request) {
@@ -31,11 +28,14 @@ export async function POST(req: Request) {
   const h = herramienta ?? "claude";
   if (!esHerramienta(h)) return NextResponse.json({ error: "Herramienta no válida" }, { status: 400 });
   const previo = hijos[h];
-  if (previo?.pid && previo.exitCode === null) { try { process.kill(-previo.pid); } catch { /* ya había terminado */ } }
+  if (previo?.pid && previo.exitCode === null) { try { process.kill(WINDOWS ? previo.pid : -previo.pid); } catch { /* ya había terminado */ } }
   // por si el servidor se reinició y perdió su hijo: solo la orden exacta, nunca una búsqueda amplia
-  if (h === "claude") await new Promise<void>((res) => execFile("pkill", ["-f", "^claude auth login"], () => res()));
+  if (h === "claude" && !WINDOWS) await new Promise<void>((res) => execFile("pkill", ["-f", "^claude auth login"], () => res()));
+  const ruta = ejecutable(h);
+  if (!ruta) return NextResponse.json({ error: `No encuentro ${h}: instálalo primero (ver README).` }, { status: 500 });
   try {
-    const hijo = spawn(h, h === "claude" ? ["auth", "login", "--claudeai"] : ["login"], { env: env(), stdio: "ignore", detached: true });
+    // en Windows, los .cmd de npm se lanzan a través de la consola (argumentos fijos, sin datos del usuario)
+    const hijo = spawn(ruta, h === "claude" ? ["auth", "login", "--claudeai"] : ["login"], { env: entornoBase(), stdio: "ignore", detached: true, windowsHide: true, shell: WINDOWS && /\.(cmd|bat)$/i.test(ruta) });
     hijo.on("error", () => { delete hijos[h]; });
     hijo.unref();
     hijos[h] = hijo;

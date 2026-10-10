@@ -71,7 +71,7 @@ def main(url, dest):
         likes = (m.get("edge_media_preview_like") or {}).get("count", "")
         com = (m.get("edge_media_to_parent_comment") or m.get("edge_media_preview_comment") or {}).get("count", "")
         nota = f"Slides de vídeo (se usa su portada): {', '.join(map(str, videos))}\n" if videos else ""
-        open(f"{tmp}/info.txt", "w").write(f"URL: {url}\nCuenta: @{user}\nComentarios: {com}\nLikes: {likes}\nSlides: {len(srcs)}\n{nota}\nTexto:\n{cap}\n")
+        open(f"{tmp}/info.txt", "w", encoding="utf-8").write(f"URL: {url}\nCuenta: @{user}\nComentarios: {com}\nLikes: {likes}\nSlides: {len(srcs)}\n{nota}\nTexto:\n{cap}\n")
         os.rename(tmp, dest)
     finally:
         shutil.rmtree(tmp, ignore_errors=True)

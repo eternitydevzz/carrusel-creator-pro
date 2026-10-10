@@ -1,0 +1,5 @@
+# Saltos de línea por tipo de archivo: los de Windows con CRLF, el resto con LF (también al descargar el ZIP)
+*.ps1 text eol=crlf
+*.cmd text eol=crlf
+*.sh text eol=lf
+*.py text eol=lf

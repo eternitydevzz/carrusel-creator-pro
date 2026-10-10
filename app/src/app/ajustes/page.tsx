@@ -6,7 +6,7 @@ import { Check, FolderOpen, Loader2, Sparkles } from "lucide-react";
 import { Aviso, Cabecera, Campo, Panel, Pastilla } from "@/componentes/ui";
 import { BotonConexion } from "@/componentes/BotonConexion";
 
-type Ajustes = { clave_puesta: boolean; clave_final: string; creditos: number | null; creditos_error?: string; cuenta: string; ubicacion: Record<string, string | number>; codex: string; codex_ok: boolean; claude: string; claude_instalado: boolean; claude_ok: boolean; cupo: string; herramientas: Record<string, boolean>; datos: string; datos_por_defecto: string };
+type Ajustes = { clave_puesta: boolean; clave_final: string; creditos: number | null; creditos_error?: string; cuenta: string; ubicacion: Record<string, string | number>; codex: string; codex_ok: boolean; claude: string; claude_instalado: boolean; claude_ok: boolean; cupo: string; herramientas: Record<string, boolean>; datos: string; datos_por_defecto: string ; windows?: boolean};
 
 export default function AjustesPagina() {
   const [a, setA] = useState<Ajustes | null>(null);
@@ -48,7 +48,7 @@ export default function AjustesPagina() {
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-[280px] flex-1"><Campo etiqueta="Ruta de la carpeta" ayuda={`Por defecto: ${a.datos_por_defecto}`}><input className="campo mono" value={carpeta} onChange={(e) => setCarpeta(e.target.value)} /></Campo></div>
           <button className="boton" disabled={guardando || carpeta === a.datos} onClick={cambiarCarpeta}><Check size={16} /> Usar esta carpeta</button>
-          <button className="boton boton-fantasma" title="Abrir la carpeta actual en el Finder" onClick={() => void fetch("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })}><FolderOpen size={16} /> Abrir en el Finder</button>
+          <button className="boton boton-fantasma" title="Abrir la carpeta actual" onClick={() => void fetch("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" })}><FolderOpen size={16} /> Abrir en el Finder</button>
         </div>
       </Panel>
 
@@ -56,7 +56,7 @@ export default function AjustesPagina() {
         <Panel className="aparece">
           <h2 className="mb-3 text-[18px] font-semibold">Codex</h2>
           <div className="mb-3 flex items-center gap-2"><Pastilla tono={a.codex_ok ? "ok" : "danger"}>{a.codex_ok ? "Conectado" : "Sin sesión"}</Pastilla><span className="mono" style={{ color: "var(--fg-muted)" }}>{a.codex}</span></div>
-          <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Codex genera las imágenes con tu plan de ChatGPT. Para cambiar de cuenta, en la Terminal: <code className="mono">codex logout</code> y después conéctalo aquí. Escribe el nombre de la cuenta para que el cupo se cuente bien.</p>
+          <p className="mb-4 text-[13px]" style={{ color: "var(--fg-muted)" }}>Codex genera las imágenes con tu plan de ChatGPT. Para cambiar de cuenta, en la terminal: <code className="mono">codex logout</code> y después conéctalo aquí. Escribe el nombre de la cuenta para que el cupo se cuente bien.</p>
           {!a.codex_ok && <div className="mb-4"><BotonConexion herramienta="codex" alConectar={() => void cargar()} /></div>}
           <Campo etiqueta="Nombre de la cuenta conectada" ayuda="Solo una etiqueta para el registro de imágenes (cuenta1, cuenta2…)."><input className="campo" value={cuenta} onChange={(e) => setCuenta(e.target.value)} /></Campo>
           <div className="mt-4"><Pastilla tono="accent">{a.cupo}</Pastilla></div>
@@ -88,9 +88,9 @@ export default function AjustesPagina() {
       </div>
 
       <Panel className="aparece">
-        <h2 className="mb-3 text-[18px] font-semibold">Herramientas del Mac</h2>
+        <h2 className="mb-3 text-[18px] font-semibold">Herramientas de tu compu</h2>
         <div className="flex flex-wrap gap-2">{Object.entries(a.herramientas).map(([h, ok]) => <Pastilla key={h} tono={ok ? "ok" : "danger"}>{ok ? <Check size={14} /> : null} {h}</Pastilla>)}</div>
-        {Object.values(a.herramientas).some((ok) => !ok) && <p className="mt-3 text-[13px]" style={{ color: "var(--warn)" }}>Falta alguna herramienta: ejecuta <code className="mono">./instalar.sh</code> en la carpeta del proyecto.</p>}
+        {Object.values(a.herramientas).some((ok) => !ok) && <p className="mt-3 text-[13px]" style={{ color: "var(--warn)" }}>Falta alguna herramienta: ejecuta <code className="mono">{a.windows ? "powershell -ExecutionPolicy Bypass -File .\\instalar.ps1" : "./instalar.sh"}</code> en la carpeta del proyecto.</p>}
       </Panel>
 
       <div className="flex justify-end"><button className="boton boton-primario" disabled={guardando} onClick={guardar}>{guardando ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />} Guardar ajustes</button></div>

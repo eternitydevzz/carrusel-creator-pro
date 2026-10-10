@@ -4,3 +4,4 @@ datos/
 !datos/.gitkeep
 .DS_Store
 *.log
+app/public/carrusel.ico

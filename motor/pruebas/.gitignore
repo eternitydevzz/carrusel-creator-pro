@@ -1,0 +1,3 @@
+# Las pruebas llevan sus propios datos y logs de Codex guardados (la raíz ignora datos/ y *.log)
+!datos/
+!codex/*/codex.log

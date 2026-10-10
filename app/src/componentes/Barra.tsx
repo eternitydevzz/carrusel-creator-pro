@@ -60,7 +60,7 @@ export function Barra() {
         })}
       </nav>
       <div className="mt-auto px-2 text-[12px] leading-relaxed" style={{ color: "var(--fg-faint)" }}>
-        Todo pasa en tu Mac. Codex genera; nosotros estampamos el pie y limpiamos los metadatos.
+        Todo pasa en tu compu. Codex genera; nosotros estampamos el pie y limpiamos los metadatos.
       </div>
     </aside>
     </>

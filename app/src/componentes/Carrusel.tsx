@@ -171,7 +171,7 @@ export function Carrusel({ nombre }: { nombre: string }) {
         <div className="flex flex-wrap items-center gap-2">
           <Link href="/" className="boton boton-fantasma"><ArrowLeft size={16} /> Inicio</Link>
           <Pastilla tono={fase === "cerrado" ? "ok" : fase === "generando" || fase === "redactando" ? "warn" : "accent"}>{etiquetaFase}</Pastilla>
-          {d.slides.length > 0 && <button className="boton boton-fantasma" title="Abrir la carpeta en el Finder" aria-label="Abrir en el Finder" onClick={() => void fetch("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ruta: `salida/${nombre}` }) })}><FolderOpen size={16} /></button>}
+          {d.slides.length > 0 && <button className="boton boton-fantasma" title="Abrir la carpeta" aria-label="Abrir la carpeta" onClick={() => void fetch("/api/abrir", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ruta: `salida/${nombre}` }) })}><FolderOpen size={16} /></button>}
           <button className="boton boton-fantasma" onClick={borrar} aria-label="Borrar carrusel" disabled={fase === "generando"}><Trash2 size={16} /></button>
         </div>
       </header>

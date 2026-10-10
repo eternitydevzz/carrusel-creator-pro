@@ -1,0 +1,9 @@
+handle: @marca.prueba
+lema: Marca de prueba
+fotos: fotos/personaje_1.jpg, fotos/personaje_2.jpg
+tipografia: estilo/referencia_1.jpg
+ropa: Americana azul marino y camiseta blanca. Sin corbata
+azul: #1A79FB
+idioma: español
+angulo: Marca de prueba del comando: emprendedores que quieren ordenar su trabajo con herramientas sencillas
+tope_imagenes_dia: 60

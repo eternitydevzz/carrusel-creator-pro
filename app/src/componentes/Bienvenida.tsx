@@ -11,7 +11,7 @@ import { useConexion, type Herramienta } from "@/lib/useConexion";
    Guarda en los mismos sitios que Branding y Ajustes (/api/marca, /api/marca/foto, /api/ajustes). */
 
 type Opcion = { v: string; t: string; e?: string };
-type Ajustes = { codex_ok: boolean; claude_ok: boolean; claude_instalado: boolean; clave_puesta: boolean; creditos: number | null; creditos_error?: string; herramientas: Record<string, boolean> };
+type Ajustes = { codex_ok: boolean; claude_ok: boolean; claude_instalado: boolean; clave_puesta: boolean; creditos: number | null; creditos_error?: string; herramientas: Record<string, boolean> ; windows?: boolean};
 
 // modo "inicial": primera vez del equipo (marca + conexiones). Modo "cliente": un cliente nuevo, sin las conexiones (son del equipo).
 const BLOQUES_INICIAL = ["Tú", "Tu marca", "Tu personaje", "Conexiones"];
@@ -339,8 +339,8 @@ export function Bienvenida() {
           <FilaConexion ok={aj.codex_ok} nombre="Codex" si="Conectado a tu cuenta de ChatGPT" no="Sin sesión de ChatGPT" herramienta="codex" alConectar={comprobar} />
           {aj.claude_instalado
             ? <FilaConexion ok={aj.claude_ok} nombre="Claude Code" si="Conectado a tu cuenta de Claude" no="Sin sesión de Claude" herramienta="claude" alConectar={comprobar} />
-            : <Fila ok={false} nombre="Claude Code" si="" no="No está instalado. En la carpeta de la app, ejecuta:" orden="./instalar.sh" />}
-          {Object.entries(aj.herramientas).some(([, v]) => !v) && <Fila ok={false} nombre={`Faltan: ${Object.entries(aj.herramientas).filter(([, v]) => !v).map(([k]) => k).join(", ")}`} no="En la carpeta de la app, ejecuta:" orden="./instalar.sh" si="" />}
+            : <Fila ok={false} nombre="Claude Code" si="" no="No está instalado. En la carpeta de la app, ejecuta:" orden={aj.windows ? "powershell -ExecutionPolicy Bypass -File .\\instalar.ps1" : "./instalar.sh"} />}
+          {Object.entries(aj.herramientas).some(([, v]) => !v) && <Fila ok={false} nombre={`Faltan: ${Object.entries(aj.herramientas).filter(([, v]) => !v).map(([k]) => k).join(", ")}`} no="En la carpeta de la app, ejecuta:" orden={aj.windows ? "powershell -ExecutionPolicy Bypass -File .\\instalar.ps1" : "./instalar.sh"} si="" />}
           <button type="button" className="cm-back" style={{ justifySelf: "center" }} disabled={comprobando} onClick={() => { Sfx.click(); void comprobar(); }}>{comprobando ? "Comprobando…" : "↻ Volver a comprobar"}</button>
           {(!aj.codex_ok || !aj.claude_ok) && <p className="cm-q__help" style={{ textAlign: "center", marginTop: 0 }}>Puedes seguir y conectarlo después: sin Codex no se puede generar.</p>}
         </>)}

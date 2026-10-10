@@ -8,7 +8,7 @@ El prompt que recibe Codex está en `PROMPT_BASE.txt`. Los datos de la marca, en
 | Quién | Qué hace |
 |---|---|
 | Codex | La escena de cada slide, sin contador ni pie |
-| Claude | El contador y el pie, estampados con `plantilla/plantilla.swift`. Idénticos en todos los slides |
+| Claude | El contador y el pie, estampados con `plantilla/plantilla.py`. Idénticos en todos los slides |
 | El usuario | Aprueba la ficha antes de generar y el carrusel antes de cerrar |
 
 Sin agentes. Un carrusel cada vez. El siguiente no empieza hasta que el anterior está aprobado.

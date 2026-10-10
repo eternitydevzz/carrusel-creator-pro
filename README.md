@@ -1,13 +1,13 @@
 # Carrusel Creator Pro
 
-Convierte carruseles virales de Instagram (o tu propio guion) en carruseles con tu marca, generados con Codex, listos para subir. Corre en tu Mac, en el navegador. Nada sale de tu ordenador salvo las llamadas a ScrapeCreators (descargar el original), a Claude Code (redactar la ficha) y a Codex (generar las imágenes).
+Convierte carruseles virales de Instagram (o tu propio guion) en carruseles con tu marca, generados con Codex, listos para subir. Corre en tu compu (**Mac o Windows**), en el navegador. Nada sale de tu ordenador salvo las llamadas a ScrapeCreators (descargar el original), a Claude Code (redactar la ficha) y a Codex (generar las imágenes).
 
 > **Lo primero que tienes que saber:** Codex, con un plan de ChatGPT, bloquea la generación de imágenes en torno a las **60 imágenes al día por cuenta** (medido, no publicado). Un carrusel de 7 slides con dos correcciones son 9 imágenes. Eso da para 5 o 6 carruseles al día. La app lleva la cuenta y no lanza si no hay sitio.
 
 ## Qué necesitas
 
-- Un Mac (la plantilla del pie y el contador se dibuja con Swift).
-- [Homebrew](https://brew.sh).
+- Un **Mac** o una **PC con Windows 10/11**.
+- Para instalar las herramientas: [Homebrew](https://brew.sh) en Mac, o **winget** en Windows (ya viene en Windows 10 y 11).
 - Codex CLI conectado a tu cuenta de ChatGPT (`codex login`): genera las imágenes.
 - Claude Code conectado a tu cuenta (`claude`): redacta las fichas.
 - Una clave de [ScrapeCreators](https://scrapecreators.com) para descargar los carruseles originales (1 crédito por carrusel).
@@ -17,35 +17,44 @@ Cada persona usa **sus propias cuentas** (ChatGPT para Codex, Claude, ScrapeCrea
 
 ### ¿Por qué no se puede subir a Vercel?
 
-No es solo poner unas claves. La app depende de cosas que solo hay en un Mac: el pie se dibuja con Swift y las imágenes se recortan con `sips`; Codex y Claude Code se usan con la sesión de tu plan (sin pagar API); los carruseles se guardan en disco y cada generación tarda de 5 a 12 minutos en segundo plano. En la nube habría que reescribirla y pagar cada imagen por API.
+No es solo poner unas claves. La app depende de cosas que corren en tu propia compu: Codex y Claude Code se usan con la sesión de tu plan (sin pagar API); los carruseles se guardan en disco y cada generación tarda de 5 a 12 minutos en segundo plano. En la nube habría que reescribirla y pagar cada imagen por API.
 
 ## Instalar
 
-El repositorio es privado: necesitas que te inviten y entrar en GitHub con tu cuenta (la primera vez, `git` te pedirá iniciar sesión; también vale `gh auth login`).
+Descarga el ZIP desde la plataforma (o clona el repositorio si te dieron acceso) y descomprímelo.
+
+**Mac** (en la Terminal, dentro de la carpeta):
 
 ```bash
-git clone https://github.com/eternitydevzz/carrusel-creator-pro.git
-cd carrusel-creator-pro
 ./instalar.sh
 ```
 
-El instalador pone Node (20 o más), ffmpeg y exiftool con Homebrew, instala Codex CLI (versión probada) y Claude Code si no están, y las dependencias de la app. Al terminar te dice cómo arrancar.
+El instalador pone Node (20 o más), Python con Pillow, ffmpeg y exiftool con Homebrew, instala Codex CLI (versión probada) y Claude Code si no están, y las dependencias de la app. Al terminar te dice cómo arrancar.
+
+**Windows** (en PowerShell, dentro de la carpeta):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\instalar.ps1
+```
+
+Instala con winget Node, Python, ffmpeg, ExifTool y Git, después Pillow, Codex CLI, Claude Code y las dependencias, y crea un acceso directo **Carrusel Creator Pro** en el escritorio. Si dice que no encuentra algo recién instalado, cierra PowerShell, abre una nueva y vuelve a ejecutarlo. Si `python` no responde, desactiva los alias de python en *Configuración → Aplicaciones → Alias de ejecución de aplicaciones*.
 
 **Lo más fácil: que la instale tu Claude.** Abre Claude Code dentro de la carpeta (`cd carrusel-creator-pro` y `claude`) y dile *"instálame esta app"*. Sigue los pasos de `CLAUDE.md`: ejecuta el instalador, te dice qué tienes que hacer tú (por ejemplo `codex login`) y al final te pregunta si quieres el icono en el Dock que enciende y apaga el servidor solo.
 
 ## Arrancar
 
-```bash
-./arrancar.sh
-```
+- **Mac:** `./arrancar.sh`
+- **Windows:** doble clic en el acceso directo **Carrusel Creator Pro** del escritorio (o en `arrancar.cmd`).
 
-Se abre sola en **`http://carrusel.localhost:3000`** (los nombres `*.localhost` llevan a tu propio Mac sin configurar nada; usa Chrome). Deja abierta la ventana de la Terminal mientras uses la app.
+Se abre sola en **`http://carrusel.localhost:3000`** (los nombres `*.localhost` llevan a tu propia compu sin configurar nada; usa Chrome). Deja abierta la ventana de la terminal mientras uses la app: al cerrarla se apaga.
 
 ### Instalarla como app (recomendado)
 
 En Chrome, con la app abierta, pulsa el icono de **Instalar** de la barra de direcciones (o menú ⋮ → *Transmitir, guardar y compartir* → *Instalar página como aplicación*). Queda en el Dock y en Launchpad como **Carrusel Creator Pro**, con el logo de Código MaestrIA y su propia ventana, sin pestañas ni dirección. A partir de entonces, `./arrancar.sh` abre directamente esa ventana. Sigue siendo la misma app: necesita `./arrancar.sh` en marcha.
 
-### Abrirla sin Terminal: el servidor se enciende y se apaga solo
+### Abrirla sin Terminal en Mac: el servidor se enciende y se apaga solo
+
+Esto es solo para Mac. En Windows ya tienes el acceso directo del escritorio.
 
 Con la app ya instalada desde Chrome, ejecuta una vez:
 
@@ -65,9 +74,9 @@ Crea el icono **Carrusel Creator Pro** en tu carpeta Aplicaciones (`~/Applicatio
 
 La primera vez sale la **bienvenida**: un formulario de 11 pasos (unos 3 minutos) que deja todo configurado: tu nombre, tu @, el color, a quién le hablas, el lema del pie, tus fotos (de 1 a 3), tus referencias de estilo (de 1 a 3), la ropa, la clave de ScrapeCreators, la comprobación de Codex y Claude Code, y la ubicación de los metadatos. Se repite desde **Ajustes → Repetir bienvenida**, y todo se puede cambiar después en **Branding** y **Ajustes**.
 
-Si Codex no está conectado, la bienvenida te da la orden exacta para la Terminal (`codex login`).
+Si Codex no está conectado, la bienvenida te da la orden exacta para la terminal (`codex login`).
 
-Para probar con otra marca sin tocar la tuya, arranca con otra carpeta de datos: `CCP_DATOS=/ruta/a/otra/carpeta ./arrancar.sh`.
+Para probar con otra marca sin tocar la tuya, arranca con otra carpeta de datos: `CCP_DATOS=/ruta/a/otra/carpeta ./arrancar.sh` (en Windows: `$env:CCP_DATOS="C:\ruta"; .\arrancar.ps1`).
 
 Al abrir o recargar la app sale la intro de Código MaestrIA (unos 3 segundos; se salta con un clic, Escape o Enter). Cuando la app recarga sola (al cambiar de cliente) no sale.
 
@@ -79,7 +88,7 @@ Lo que se comparte entre clientes: la cuenta de Codex y su cupo de imágenes (un
 
 En disco: `datos/perfiles/<cliente>/` (marca, fichas, originales, carruseles y `perfil.json`). Eliminar un cliente no borra nada: su carpeta pasa a `datos/_papelera/`. Si tus datos son de antes de los clientes, la app los convierte sola la primera vez que la abres, después de guardar una copia en `datos/_copias/`.
 
-Desde la Terminal: `PERFIL=<cliente> motor/carrusel.sh ...` trabaja con otro cliente sin cambiar el activo.
+Desde la terminal: `PERFIL=<cliente> python3 motor/carrusel.py ...` trabaja con otro cliente sin cambiar el activo.
 
 ## Cómo funciona
 
@@ -100,9 +109,11 @@ Dos paradas tuyas, la ficha y el resultado, porque hoy salen bien a la primera u
 
 Cuando haya una versión nueva:
 
+Descarga el ZIP nuevo y copia dentro tu carpeta `datos/`, o, si clonaste el repositorio:
+
 ```bash
 git pull
-./instalar.sh
+./instalar.sh          # en Windows: powershell -ExecutionPolicy Bypass -File .\instalar.ps1
 ```
 
 Tus datos no se tocan.
@@ -114,30 +125,30 @@ El motor usa opciones concretas de Codex CLI y de Claude Code. Está probado con
 ## Pruebas sin gasto
 
 ```bash
-motor/pruebas/correr.sh
+python3 motor/pruebas/correr.py     # en Windows: python motor\pruebas\correr.py
 ```
 
 Prueba el motor con respuestas guardadas de ScrapeCreators y de Codex (carrusel con vídeos, foto suelta, reel, Codex que rehace imágenes, límite de uso, correcciones que fallan, reglas del personaje…). No gasta imágenes ni créditos y no toca `datos/`. Lánzalo después de cambiar algo del motor: tiene que terminar con "fallan 0". En `motor/pruebas/codex/*/origen` pone qué casos son reales y cuáles están construidos a mano.
 
 ## Si algo pisa el pie
 
-A veces Codex lleva la escena hasta abajo y tapa el @. Sin gastar imágenes: `motor/carrusel.sh encoger <carrusel> <n>` encoge la escena de ese slide para dejar libre el pie (con `<factor> <px>` al final se puede encoger más o bajarla si el titular choca con el contador).
+A veces Codex lleva la escena hasta abajo y tapa el @. Sin gastar imágenes: `python3 motor/carrusel.py encoger <carrusel> <n>` encoge la escena de ese slide para dejar libre el pie (con `<factor> <px>` al final se puede encoger más o bajarla si el titular choca con el contador).
 
 ## Estructura
 
 ```
 app/      la interfaz (Next.js) y su API local
-motor/    los scripts que hacen el trabajo: carrusel.sh, ficha.py, plantilla.swift, adaptar.sh
+motor/    el motor en Python (Mac y Windows): carrusel.py, ficha.py, bajar.py, plantilla/plantilla.py (pie y contador), adaptar.py
 datos/    lo tuyo, fuera de git: perfiles/<cliente>/ (marca, fichas, virales, salida), CUPO.csv y ajustes.json compartidos
 ```
 
-El motor se puede usar solo, sin la interfaz: `motor/carrusel.sh` sin argumentos enseña las órdenes.
+El motor se puede usar solo, sin la interfaz: `python3 motor/carrusel.py` (en Windows, `python`) sin argumentos enseña las órdenes. `motor/carrusel.sh` sigue funcionando en Mac: llama a carrusel.py.
 
 ## Lo que no hace
 
 - No acelera a Codex: cada carrusel tarda de 5 a 12 minutos.
 - No publica en Instagram.
-- No funciona sin Mac ni sin Codex conectado. Sin clave de ScrapeCreators no se pueden copiar carruseles virales (con tu propio guion, sí).
+- No funciona sin Codex conectado. Sin clave de ScrapeCreators no se pueden copiar carruseles virales (con tu propio guion, sí).
 - No sustituye tu ojo: hay que mirar el resultado antes de cerrar.
 
 ## Metadatos

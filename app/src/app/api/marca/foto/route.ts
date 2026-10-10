@@ -31,7 +31,7 @@ export async function POST(req: Request) {
     const ok = await new Promise<boolean>((res) => execFile(PY, [path.join(MOTOR, "foto.py"), tmp, destino], { env: entornoBase(), windowsHide: true }, (e) => res(!e)));
     await fs.rm(tmp, { force: true });
     // solo cuenta si de verdad salió un JPG: si no, una foto fallida desplazaría a una buena del máximo de 3
-    if (ok && (await fs.stat(destino).then((st) => st.size > 0, () => false))) guardados.push(path.relative(path.join(cliente(), "marca"), destino));
+    if (ok && (await fs.stat(destino).then((st) => st.size > 0, () => false))) guardados.push(path.relative(path.join(cliente(), "marca"), destino).split(path.sep).join("/")); // siempre con "/": los datos sirven en Mac y en Windows
     else { await fs.rm(destino, { force: true }); fallidos.push(a.name || "archivo"); }
   }
   if (!guardados.length) return NextResponse.json({ error: `No se pudo leer como imagen: ${fallidos.join(", ")}. Usa JPG, PNG o HEIC.` }, { status: 400 });

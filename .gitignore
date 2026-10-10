@@ -5,3 +5,5 @@ datos/
 .DS_Store
 *.log
 app/public/carrusel.ico
+__pycache__/
+*.pyc
